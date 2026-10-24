@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tapout — Unknown tag</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Nunito:wght@200;300;400;600&amp;display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: {{t.bg}}; color: {{t.ink}}; font-family: -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif; display: flex; flex-direction: column; padding: 56px 24px 40px; overflow: hidden">
+  <div style="height: 44px; display: flex; align-items: center">
+    <button type="button" aria-label="Close" style="width: 44px; height: 44px; border: 0; border-radius: 999px; background: {{t.s1}}; box-shadow: {{t.shadow}}; color: {{t.ink2}}; display: grid; place-items: center; padding: 0">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </div>
+  <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 40px">
+    <div style="position: relative; width: 260px; height: 260px">
+      <svg width="260" height="260" viewBox="0 0 260 260" aria-hidden="true" style="position: absolute; left: 0; top: 0">
+        <circle cx="130" cy="130" r="124" fill="none" stroke="{{t.danger}}" stroke-width="4" stroke-linecap="round" stroke-dasharray="46 32" opacity="0.9"></circle>
+      </svg>
+      <div style="position: absolute; left: 20px; top: 20px">
+        <dc-import name="Orb" tone="slate" size="220" ring="0" theme="{{theme}}" hint-size="220px,220px"></dc-import>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center">
+      <h1 style="margin: 0; font-size: 28px; line-height: 34px; font-weight: 600; max-width: 300px">That's not one of your tags.</h1>
+      <p style="margin: 0; font-size: 17px; line-height: 22px; color: {{t.ink2}}">Try Kitchen or Desk.</p>
+    </div>
+  </div>
+  <div style="display: flex; flex-direction: column; gap: 8px">
+    <button type="button" style="height: 56px; border: 0; border-radius: 999px; background: #8a94a6; color: {{t.onFill}}; font: 600 17px/22px -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif">Try again</button>
+    <button type="button" style="height: 44px; border: 0; background: none; color: {{t.ink2}}; font: 400 17px/22px -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif">Pair as a new place</button>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const P = {
+      dark: { bg:'#0b0d10', s1:'#15181d', ink:'#f3f1ec', ink2:'#a4abb6', danger:'#ff7a6b', onFill:'#0b0d10', shadow:'none' },
+      light: { bg:'#f6f4ef', s1:'#fffdf9', ink:'#15171b', ink2:'#565c66', danger:'#b42318', onFill:'#15171b', shadow:'0 2px 12px #0000000f' }
+    };
+    const theme = this.props.theme === 'light' ? 'light' : 'dark';
+    return { t: P[theme], theme };
+  }
+}
+</script>
+</body>
+</html>

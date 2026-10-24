@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tapout — Buddy concept</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Nunito:wght@200;300;400;600&amp;display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: {{t.bg}}; color: {{t.ink}}; font-family: -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif; position: relative; overflow: hidden; display: flex; flex-direction: column; padding: 56px 24px 112px">
+  <div style="display: flex; align-items: center; justify-content: space-between; height: 44px">
+    <span style="height: 44px; box-sizing: border-box; padding: 0 16px; border-radius: 999px; background: {{t.s1}}; box-shadow: {{t.shadow}}; color: {{t.emberInk}}; display: inline-flex; align-items: center; gap: 6px; font-size: 15px; line-height: 20px; font-weight: 600">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Deep work</span>
+    <button type="button" aria-label="Settings" style="width: 44px; height: 44px; border: 0; border-radius: 999px; background: {{t.s1}}; box-shadow: {{t.shadow}}; color: {{t.ink2}}; display: grid; place-items: center; padding: 0">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6"/></svg>
+    </button>
+  </div>
+
+  <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px">
+    <sc-if value="{{notLantern}}" hint-placeholder-val="{{true}}">
+      <dc-import name="Orb" tone="ember" size="220" ring="1" theme="{{theme}}" hint-size="220px,220px"></dc-import>
+    </sc-if>
+    <sc-if value="{{isLantern}}" hint-placeholder-val="{{false}}">
+      <div role="img" aria-label="Lantern buddy holding the orb" style="position: relative; width: 240px; height: 320px">
+        <div style="position: absolute; left: 88px; top: 0; width: 64px; height: 44px; box-sizing: border-box; border: 8px solid {{t.case}}; border-bottom: 0; border-radius: 32px 32px 0 0"></div>
+        <div style="position: absolute; left: 0; top: 36px; width: 240px; height: 284px; box-sizing: border-box; border-radius: 72px; border: 18px solid {{t.case}}; box-shadow: {{t.caseShadow}}"></div>
+        <div style="position: absolute; left: 20px; top: 68px">
+          <dc-import name="Orb" tone="ember" size="200" ring="1" theme="{{theme}}" hint-size="200px,200px"></dc-import>
+        </div>
+        <div style="position: absolute; left: 96px; top: 284px; display: flex; gap: 20px" aria-hidden="true">
+          <svg width="14" height="8" viewBox="0 0 14 8"><path d="M1 1q6 7 12 0" fill="none" stroke="{{t.ink2}}" stroke-width="2" stroke-linecap="round"></path></svg>
+          <svg width="14" height="8" viewBox="0 0 14 8"><path d="M1 1q6 7 12 0" fill="none" stroke="{{t.ink2}}" stroke-width="2" stroke-linecap="round"></path></svg>
+        </div>
+      </div>
+    </sc-if>
+    <span role="timer" style="font-family: ui-rounded, 'SF Pro Rounded', Nunito, system-ui, sans-serif; font-size: 96px; line-height: 96px; font-weight: 200; letter-spacing: -2px; font-variant-numeric: tabular-nums">47:12</span>
+  </div>
+
+  <sc-if value="{{isPebble}}" hint-placeholder-val="{{false}}">
+    <div style="display: flex; align-items: flex-end; justify-content: center; gap: 12px; margin-bottom: 8px">
+      <div role="img" aria-label="Pebble buddy, eyes closed while locked" style="position: relative; width: 112px; height: 84px; border-radius: 42px 42px 36px 36px; background: {{t.case}}; box-shadow: {{t.caseShadow}}">
+        <div style="position: absolute; left: 22px; top: 12px; width: 30px; height: 12px; border-radius: 50%; background: #ffffff; opacity: 0.12"></div>
+        <svg width="56" height="10" viewBox="0 0 56 10" aria-hidden="true" style="position: absolute; left: 28px; top: 38px"><path d="M2 2q7 8 14 0M40 2q7 8 14 0" fill="none" stroke="{{t.ink}}" stroke-width="2.4" stroke-linecap="round"></path></svg>
+        <div style="position: absolute; left: 50px; top: 60px; width: 12px; height: 6px; border-radius: 999px; background: #ff9f43"></div>
+      </div>
+      <span style="margin-bottom: 30px; padding: 8px 12px; border-radius: 16px 16px 16px 4px; background: {{t.s1}}; box-shadow: {{t.shadow}}; font-size: 13px; line-height: 18px; color: {{t.ink2}}">Napping till you tap.</span>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{isStack}}" hint-placeholder-val="{{false}}">
+    <div role="img" aria-label="Stack buddy, 2 of 3 blocks lit for hours phone-free" style="position: absolute; right: 28px; bottom: 112px; display: flex; flex-direction: column; align-items: center; gap: 4px">
+      <div style="position: relative; width: 44px; height: 40px; border-radius: 16px; background: {{t.case}}">
+        <span style="position: absolute; left: 12px; top: 16px; width: 5px; height: 5px; border-radius: 50%; background: {{t.ink}}"></span>
+        <span style="position: absolute; left: 27px; top: 16px; width: 5px; height: 5px; border-radius: 50%; background: {{t.ink}}"></span>
+      </div>
+      <div style="width: 60px; height: 32px; border-radius: 14px; background: #ff9f43; box-shadow: 0 0 16px #ff9f4366"></div>
+      <div style="width: 76px; height: 32px; border-radius: 14px; background: #ff9f43; box-shadow: 0 0 16px #ff9f4366"></div>
+    </div>
+    <span style="position: absolute; left: 24px; bottom: 124px; font-size: 13px; line-height: 18px; color: {{t.ink2}}">[2] of 3 blocks lit today</span>
+  </sc-if>
+
+  <sc-if value="{{isPeek}}" hint-placeholder-val="{{false}}">
+    <div role="img" aria-label="Peek buddy looking up at the orb" style="position: absolute; left: 115px; bottom: 96px; width: 160px; height: 72px; overflow: hidden">
+      <div style="position: absolute; left: 0; top: 0; width: 160px; height: 160px; border-radius: 50%; background: {{t.case}}; box-shadow: {{t.caseShadow}}"></div>
+      <span style="position: absolute; left: 52px; top: 24px; width: 12px; height: 16px; border-radius: 999px; background: {{t.ink}}"></span>
+      <span style="position: absolute; left: 96px; top: 24px; width: 12px; height: 16px; border-radius: 999px; background: {{t.ink}}"></span>
+      <span style="position: absolute; left: 55px; top: 26px; width: 5px; height: 5px; border-radius: 50%; background: {{t.case}}"></span>
+      <span style="position: absolute; left: 99px; top: 26px; width: 5px; height: 5px; border-radius: 50%; background: {{t.case}}"></span>
+    </div>
+  </sc-if>
+
+  <div style="position: absolute; left: 0; bottom: 0">
+    <dc-import name="TabBar" active="home" theme="{{theme}}" hint-size="390px,96px"></dc-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"concept":{"editor":"enum","options":["pebble","lantern","stack","peek"],"default":"pebble"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const P = {
+      dark: { bg:'#0b0d10', s1:'#15181d', ink:'#f3f1ec', ink2:'#a4abb6', emberInk:'#ff9f43', case:'#2a2f38', caseShadow:'inset 0 -6px 12px #00000055, inset 0 4px 8px #ffffff10', shadow:'none' },
+      light: { bg:'#f6f4ef', s1:'#fffdf9', ink:'#15171b', ink2:'#565c66', emberInk:'#96490a', case:'#d9d3c7', caseShadow:'inset 0 -6px 12px #15171b1f, inset 0 4px 8px #ffffff80', shadow:'0 2px 12px #0000000f' }
+    };
+    const theme = this.props.theme === 'light' ? 'light' : 'dark';
+    const c = this.props.concept ?? 'pebble';
+    return { t: P[theme], theme, isPebble: c === 'pebble', isLantern: c === 'lantern', notLantern: c !== 'lantern', isStack: c === 'stack', isPeek: c === 'peek' };
+  }
+}
+</script>
+</body>
+</html>

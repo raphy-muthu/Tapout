@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tapout — Modes</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Nunito:wght@200;300;400;600&amp;display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: {{t.bg}}; color: {{t.ink}}; font-family: -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif; position: relative; overflow: hidden; display: flex; flex-direction: column; padding: 56px 24px 112px">
+
+  <sc-if value="{{isList}}" hint-placeholder-val="{{true}}">
+    <div style="display: flex; align-items: center; justify-content: space-between">
+      <h1 style="margin: 0; font-size: 34px; line-height: 41px; font-weight: 600; letter-spacing: 0.2px">Modes</h1>
+      <button type="button" aria-label="New mode" style="width: 44px; height: 44px; border: 0; border-radius: 999px; background: {{t.s1}}; box-shadow: {{t.shadow}}; color: {{t.ink}}; display: grid; place-items: center; padding: 0">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
+    </div>
+    <div style="margin-top: 24px; background: {{t.s1}}; box-shadow: {{t.shadow}}; border-radius: 32px; padding: 24px; display: flex; flex-direction: column; gap: 24px; position: relative; overflow: hidden">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start">
+        <div style="display: flex; flex-direction: column; gap: 8px">
+          <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0.4px; text-transform: uppercase; color: {{t.emberInk}}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Active now</span>
+          <span style="font-size: 28px; line-height: 34px; font-weight: 600">Deep work</span>
+          <span style="font-size: 15px; line-height: 20px; color: {{t.ink2}}">[6] apps · weekdays</span>
+        </div>
+        <dc-import name="Orb" tone="ember" size="104" ring="1" theme="{{theme}}" hint-size="104px,104px"></dc-import>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+        <div style="background: {{t.s2}}; border-radius: 16px; padding: 12px; display: flex; flex-direction: column; gap: 2px">
+          <span style="font-family: ui-rounded, 'SF Pro Rounded', Nunito, system-ui, sans-serif; font-size: 20px; line-height: 24px">9–5</span>
+          <span style="font-size: 12px; line-height: 16px; color: {{t.ink3}}">Schedule</span>
+        </div>
+        <div style="background: {{t.s2}}; border-radius: 16px; padding: 12px; display: flex; flex-direction: column; gap: 2px">
+          <span style="font-size: 17px; line-height: 24px; font-weight: 600">Kitchen</span>
+          <span style="font-size: 12px; line-height: 16px; color: {{t.ink3}}">Unlocks at</span>
+        </div>
+        <div style="background: {{t.s2}}; border-radius: 16px; padding: 12px; display: flex; flex-direction: column; gap: 2px">
+          <span style="font-family: ui-rounded, 'SF Pro Rounded', Nunito, system-ui, sans-serif; font-size: 20px; line-height: 24px">[14h]</span>
+          <span style="font-size: 12px; line-height: 16px; color: {{t.ink3}}">This week</span>
+        </div>
+      </div>
+    </div>
+    <span style="margin: 32px 0 12px; font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0.4px; text-transform: uppercase; color: {{t.ink3}}">Ready</span>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+      <button type="button" style="border: 0; text-align: left; background: {{t.s1}}; box-shadow: {{t.shadow}}; border-radius: 24px; padding: 20px; display: flex; flex-direction: column; gap: 12px; color: {{t.ink}}; font-family: inherit">
+        <dc-import name="Orb" tone="slate" size="48" ring="0" theme="{{theme}}" hint-size="48px,48px"></dc-import>
+        <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 17px; line-height: 22px; font-weight: 600">Evenings</span><span style="font-size: 13px; line-height: 18px; color: {{t.ink2}}">[9] apps</span></span>
+      </button>
+      <button type="button" style="border: 0; text-align: left; background: {{t.s1}}; box-shadow: {{t.shadow}}; border-radius: 24px; padding: 20px; display: flex; flex-direction: column; gap: 12px; color: {{t.ink}}; font-family: inherit">
+        <dc-import name="Orb" tone="slate" size="48" ring="0" theme="{{theme}}" hint-size="48px,48px"></dc-import>
+        <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 17px; line-height: 22px; font-weight: 600">Weekend</span><span style="font-size: 13px; line-height: 18px; color: {{t.ink2}}">[4] apps</span></span>
+      </button>
+      <button type="button" style="border: 0; text-align: left; background: {{t.s1}}; box-shadow: {{t.shadow}}; border-radius: 24px; padding: 20px; display: flex; flex-direction: column; gap: 12px; color: {{t.ink}}; font-family: inherit">
+        <dc-import name="Orb" tone="slate" size="48" ring="0" theme="{{theme}}" hint-size="48px,48px"></dc-import>
+        <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 17px; line-height: 22px; font-weight: 600">Sleep</span><span style="font-size: 13px; line-height: 18px; color: {{t.ink2}}">All but alarms</span></span>
+      </button>
+      <button type="button" style="border: 0; background: none; outline: 1.5px dashed {{t.ink3}}; outline-offset: -1.5px; border-radius: 24px; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: {{t.ink2}}; font: 500 15px/20px -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>New mode</button>
+    </div>
+    <div style="position: absolute; left: 0; bottom: 0">
+      <dc-import name="TabBar" active="modes" theme="{{theme}}" hint-size="390px,96px"></dc-import>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{isEdit}}" hint-placeholder-val="{{false}}">
+    <div style="display: flex; align-items: center; justify-content: space-between; height: 44px">
+      <button type="button" style="height: 44px; border: 0; background: none; padding: 0; color: {{t.ink2}}; font: 400 17px/22px -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif">Cancel</button>
+      <dc-import name="Orb" tone="slate" size="44" ring="0" theme="{{theme}}" hint-size="44px,44px"></dc-import>
+      <button type="button" style="height: 44px; border: 0; background: none; padding: 0; color: {{t.ink}}; font: 600 17px/22px -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif">Save</button>
+    </div>
+    <label style="margin-top: 24px; display: flex; flex-direction: column; gap: 4px">
+      <span style="font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0.4px; text-transform: uppercase; color: {{t.ink3}}">Name</span>
+      <input type="text" value="Deep work" style="border: 0; background: none; padding: 0; color: {{t.ink}}; font: 600 34px/41px -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif; outline: none; width: 100%">
+    </label>
+    <div style="margin-top: 24px; display: flex; flex-direction: column; gap: 12px">
+      <div style="background: {{t.s1}}; box-shadow: {{t.shadow}}; border-radius: 24px; padding: 20px 24px; display: flex; flex-direction: column; gap: 16px">
+        <div style="display: flex; justify-content: space-between; align-items: center">
+          <span style="font-size: 17px; line-height: 22px; font-weight: 600">Block</span>
+          <button type="button" style="height: 44px; border: 0; background: none; padding: 0; color: {{t.ink2}}; font: 400 15px/20px -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif">[6] apps ›</button>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; color: {{t.ink}}">
+          <div style="aspect-ratio: 1; border-radius: 12px; background: {{t.s2}}; display: grid; place-items: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10 9.5v5l4.5-2.5z"/></svg></div>
+          <div style="aspect-ratio: 1; border-radius: 12px; background: {{t.s2}}; display: grid; place-items: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="3" width="12" height="18" rx="3"/><path d="M10.5 9.5v5l4-2.5z"/></svg></div>
+          <div style="aspect-ratio: 1; border-radius: 12px; background: {{t.s2}}; display: grid; place-items: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="3"/><circle cx="12" cy="13.5" r="3.5"/><path d="M8 7l1.5-3h5L16 7"/></svg></div>
+          <div style="aspect-ratio: 1; border-radius: 12px; background: {{t.s2}}; display: grid; place-items: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg></div>
+          <div style="aspect-ratio: 1; border-radius: 12px; background: {{t.s2}}; display: grid; place-items: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="7" width="19" height="11" rx="5.5"/><path d="M7 12.5h4M9 10.5v4"/></svg></div>
+          <div style="aspect-ratio: 1; border-radius: 12px; background: {{t.s2}}; display: grid; place-items: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h2l2.5 11h11L21 8H6.5"/></svg></div>
+        </div>
+      </div>
+      <div style="background: {{t.s1}}; box-shadow: {{t.shadow}}; border-radius: 24px; padding: 20px 24px; display: flex; flex-direction: column; gap: 16px">
+        <div style="display: flex; justify-content: space-between; align-items: center">
+          <span style="font-size: 17px; line-height: 22px; font-weight: 600">When</span>
+          <span style="font-family: ui-rounded, 'SF Pro Rounded', Nunito, system-ui, sans-serif; font-size: 17px; line-height: 22px; font-weight: 500">9:00 – 17:00</span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px">
+          <sc-for list="{{days}}" as="d" hint-placeholder-count="7">
+            <button type="button" onClick="{{d.pick}}" aria-pressed="{{d.on}}" aria-label="{{d.full}}" style="height: 44px; border: 0; border-radius: 999px; background: {{d.bg}}; color: {{d.fg}}; font: 600 15px/20px -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif; cursor: pointer; padding: 0">{{d.l}}</button>
+          </sc-for>
+        </div>
+      </div>
+      <div style="background: {{t.s1}}; box-shadow: {{t.shadow}}; border-radius: 24px; padding: 20px 24px; display: flex; flex-direction: column; gap: 16px">
+        <span style="font-size: 17px; line-height: 22px; font-weight: 600">Unlock at</span>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap">
+          <sc-for list="{{places}}" as="p" hint-placeholder-count="3">
+            <button type="button" onClick="{{p.pick}}" aria-pressed="{{p.on}}" style="height: 44px; border: 0; padding: 0 16px; border-radius: 999px; background: {{p.bg}}; color: {{p.fg}}; font: 500 15px/20px -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif; cursor: pointer">{{p.l}}</button>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"view":{"editor":"enum","options":["list","edit"],"default":"list"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { days: [true,true,true,true,true,false,false], places: { Kitchen: true } }; }
+  renderVals() {
+    const P = {
+      dark: { bg:'#0b0d10', s1:'#15181d', s2:'#1e222a', ink:'#f3f1ec', ink2:'#a4abb6', ink3:'#8a919c', emberInk:'#ff9f43', shadow:'none' },
+      light: { bg:'#f6f4ef', s1:'#fffdf9', s2:'#ece8e0', ink:'#15171b', ink2:'#565c66', ink3:'#5f656f', emberInk:'#96490a', shadow:'0 2px 12px #0000000f' }
+    };
+    const theme = this.props.theme === 'light' ? 'light' : 'dark';
+    const t = P[theme];
+    const view = this.props.view === 'edit' ? 'edit' : 'list';
+    const L = ['M','T','W','T','F','S','S'], F = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+    const days = L.map((l, i) => { const on = this.state.days[i]; return { l, full: F[i], on, bg: on ? t.ink : t.s2, fg: on ? t.bg : t.ink2,
+      pick: () => { const d = this.state.days.slice(); d[i] = !d[i]; this.setState({ days: d }); } }; });
+    const places = ['Kitchen','Desk','Car'].map((l) => { const on = !!this.state.places[l]; return { l, on, bg: on ? t.ink : t.s2, fg: on ? t.bg : t.ink2,
+      pick: () => this.setState({ places: { ...this.state.places, [l]: !on } }) }; });
+    return { t, theme, isList: view === 'list', isEdit: view === 'edit', days, places };
+  }
+}
+</script>
+</body>
+</html>

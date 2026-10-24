@@ -1,0 +1,28 @@
+# macOS
+.DS_Store
+
+# Xcode user state and build output
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+DerivedData/
+build/
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager (keep Package.resolved committed)
+.build/
+.swiftpm/
+
+# Secrets: keep API keys (Sentry DSN, RevenueCat, etc.) out of git
+.env
+.env.*
+Secrets.xcconfig
+*.p8
+*.p12
+*.mobileprovision
+
+# Local tooling
+graphify-out/

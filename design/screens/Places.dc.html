@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tapout — Places</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Nunito:wght@200;300;400;600&amp;display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: {{t.bg}}; color: {{t.ink}}; font-family: -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif; position: relative; overflow: hidden; display: flex; flex-direction: column; padding: 56px 24px 112px">
+  <div style="display: flex; align-items: center; justify-content: space-between">
+    <h1 style="margin: 0; font-size: 34px; line-height: 41px; font-weight: 600; letter-spacing: 0.2px">Places</h1>
+    <button type="button" aria-label="Pair a place" style="width: 44px; height: 44px; border: 0; border-radius: 999px; background: {{t.s1}}; box-shadow: {{t.shadow}}; color: {{t.ink}}; display: grid; place-items: center; padding: 0">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
+  </div>
+
+  <div style="margin-top: 24px; background: {{t.s1}}; box-shadow: {{t.shadow}}; border-radius: 32px; padding: 24px; display: flex; flex-direction: column; align-items: center; gap: 20px">
+    <div style="position: relative; width: 148px; height: 148px; border-radius: 50%; background: {{t.s2}}; display: grid; place-items: center; box-shadow: inset 0 -6px 14px #00000033, inset 0 4px 10px #ffffff12">
+      <div style="width: 96px; height: 96px; border-radius: 50%; box-sizing: border-box; border: 2px solid {{t.slateLine}}; display: grid; place-items: center; opacity: 0.8">
+        <span style="width: 14px; height: 14px; border-radius: 50%; background: #ff9f43; box-shadow: 0 0 16px #ff9f43"></span>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px">
+      <span style="font-size: 28px; line-height: 34px; font-weight: 600">Kitchen</span>
+      <span style="font-size: 15px; line-height: 20px; color: {{t.ink2}}">Default · [38] locks</span>
+    </div>
+  </div>
+
+  <div style="margin-top: 12px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+    <button type="button" style="border: 0; text-align: left; background: {{t.s1}}; box-shadow: {{t.shadow}}; border-radius: 24px; padding: 20px; display: flex; align-items: center; gap: 12px; color: {{t.ink}}; font-family: inherit">
+      <span style="width: 44px; height: 44px; flex-shrink: 0; border-radius: 50%; background: {{t.s2}}; display: grid; place-items: center"><span style="width: 8px; height: 8px; border-radius: 50%; background: {{t.slateLine}}"></span></span>
+      <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 17px; line-height: 22px; font-weight: 600">Desk</span><span style="font-size: 13px; line-height: 18px; color: {{t.ink2}}">[12] locks</span></span>
+    </button>
+    <button type="button" style="border: 0; text-align: left; background: {{t.s1}}; box-shadow: {{t.shadow}}; border-radius: 24px; padding: 20px; display: flex; align-items: center; gap: 12px; color: {{t.ink}}; font-family: inherit">
+      <span style="width: 44px; height: 44px; flex-shrink: 0; border-radius: 50%; background: {{t.s2}}; display: grid; place-items: center"><span style="width: 8px; height: 8px; border-radius: 50%; background: {{t.slateLine}}"></span></span>
+      <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 17px; line-height: 22px; font-weight: 600">Car</span><span style="font-size: 13px; line-height: 18px; color: {{t.ink2}}">[5] locks</span></span>
+    </button>
+    <button type="button" style="border: 0; text-align: left; background: {{t.s1}}; box-shadow: {{t.shadow}}; border-radius: 24px; padding: 20px; display: flex; align-items: center; gap: 12px; color: {{t.ink}}; font-family: inherit">
+      <span style="width: 44px; height: 44px; flex-shrink: 0; border-radius: 50%; background: {{t.s2}}; display: grid; place-items: center"><span style="width: 8px; height: 8px; border-radius: 50%; background: {{t.slateLine}}"></span></span>
+      <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 17px; line-height: 22px; font-weight: 600">Bedroom</span><span style="font-size: 13px; line-height: 18px; color: {{t.ink2}}">[9] locks</span></span>
+    </button>
+    <button type="button" style="border: 0; background: none; outline: 1.5px dashed {{t.ink3}}; outline-offset: -1.5px; border-radius: 24px; padding: 20px; display: flex; align-items: center; justify-content: center; gap: 8px; color: {{t.ink2}}; font: 500 15px/20px -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Pair</button>
+  </div>
+
+  <div style="position: absolute; left: 0; bottom: 0">
+    <dc-import name="TabBar" active="places" theme="{{theme}}" hint-size="390px,96px"></dc-import>
+  </div>
+
+  <sc-if value="{{isPair}}" hint-placeholder-val="{{false}}">
+    <div style="position: absolute; left: 0; top: 0; width: 390px; height: 844px; background: {{t.scrim}}"></div>
+    <div role="dialog" aria-label="Pair a place" style="position: absolute; left: 0; bottom: 0; width: 390px; height: 664px; box-sizing: border-box; background: {{t.sheet}}; border-radius: 32px 32px 0 0; padding: 12px 24px 40px; display: flex; flex-direction: column; align-items: stretch; gap: 24px">
+      <span style="align-self: center; width: 40px; height: 5px; border-radius: 999px; background: {{t.ink3}}; opacity: 0.5"></span>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 16px">
+        <div style="position: relative; width: 160px; height: 160px; display: grid; place-items: center">
+          <div style="position: absolute; left: 0; top: 0; width: 156px; height: 156px; border-radius: 50%; border: 2px solid {{t.slateLine}}"></div>
+          <div style="width: 124px; height: 124px; border-radius: 50%; background: {{t.s2}}; display: grid; place-items: center; color: {{t.slateInk}}">
+            <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+          </div>
+        </div>
+        <span style="font-size: 17px; line-height: 22px; font-weight: 600; color: {{t.slateInk}}">Tag found</span>
+      </div>
+      <label style="display: flex; flex-direction: column; gap: 8px">
+        <span style="font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0.4px; text-transform: uppercase; color: {{t.ink3}}">Name this place</span>
+        <input type="text" value="Kitchen" style="height: 56px; box-sizing: border-box; border: 0; border-radius: 16px; background: {{t.s2}}; padding: 0 16px; color: {{t.ink}}; font: 600 22px/28px -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif; outline: none">
+      </label>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px">
+        <button type="button" aria-pressed="true" style="height: 44px; border: 0; padding: 0 16px; border-radius: 999px; background: {{t.ink}}; color: {{t.sheet}}; font: 500 15px/20px -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif">Kitchen</button>
+        <button type="button" aria-pressed="false" style="height: 44px; border: 0; padding: 0 16px; border-radius: 999px; background: {{t.s2}}; color: {{t.ink2}}; font: 500 15px/20px -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif">Desk</button>
+        <button type="button" aria-pressed="false" style="height: 44px; border: 0; padding: 0 16px; border-radius: 999px; background: {{t.s2}}; color: {{t.ink2}}; font: 500 15px/20px -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif">Bedroom</button>
+        <button type="button" aria-pressed="false" style="height: 44px; border: 0; padding: 0 16px; border-radius: 999px; background: {{t.s2}}; color: {{t.ink2}}; font: 500 15px/20px -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif">Front door</button>
+      </div>
+      <div style="flex-grow: 1"></div>
+      <button type="button" style="height: 56px; border: 0; border-radius: 999px; background: #8a94a6; color: {{t.onFill}}; font: 600 17px/22px -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif">Save place</button>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"view":{"editor":"enum","options":["list","pair"],"default":"list"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const P = {
+      dark: { bg:'#0b0d10', s1:'#15181d', s2:'#1e222a', sheet:'#15181d', ink:'#f3f1ec', ink2:'#a4abb6', ink3:'#8a919c', slateInk:'#8a94a6', slateLine:'#8a94a6', onFill:'#0b0d10', scrim:'#000000b3', shadow:'none' },
+      light: { bg:'#f6f4ef', s1:'#fffdf9', s2:'#ece8e0', sheet:'#fffdf9', ink:'#15171b', ink2:'#565c66', ink3:'#5f656f', slateInk:'#535c6c', slateLine:'#6b7487', onFill:'#15171b', scrim:'#15171b66', shadow:'0 2px 12px #0000000f' }
+    };
+    const theme = this.props.theme === 'light' ? 'light' : 'dark';
+    return { t: P[theme], theme, isPair: this.props.view === 'pair' };
+  }
+}
+</script>
+</body>
+</html>

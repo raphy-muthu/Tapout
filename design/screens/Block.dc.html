@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tapout — Block screen</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #0b0d10; color: #f3f1ec; font-family: -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 0 40px; text-align: center">
+  <svg role="img" aria-label="Tapout sealed orb" width="120" height="120" viewBox="0 0 120 120" style="margin-bottom: 16px">
+    <circle cx="60" cy="60" r="54" fill="none" stroke="#ff9f43" stroke-width="3"></circle>
+    <circle cx="60" cy="60" r="40" fill="#ff9f43" opacity="0.18"></circle>
+    <circle cx="60" cy="60" r="30" fill="#ff9f43"></circle>
+    <ellipse cx="51" cy="49" rx="9" ry="6" fill="#ffe3c4"></ellipse>
+  </svg>
+  <h1 style="margin: 0; font-size: 22px; line-height: 28px; font-weight: 600">Sealed</h1>
+  <p style="margin: 0; font-size: 17px; line-height: 22px; color: #a4abb6">Tap a tag to open this app.</p>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic { renderVals() { return {}; } }
+</script>
+</body>
+</html>

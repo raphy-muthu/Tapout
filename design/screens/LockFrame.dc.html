@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tapout — Lock moment</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Nunito:wght@200;300;400;600&amp;display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: {{t.bg}}; color: {{t.ink}}; font-family: -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif; position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; padding: 56px 24px 40px">
+  <div style="height: 44px; display: flex; align-items: center">
+    <span style="height: 36px; box-sizing: border-box; padding: 0 14px; border-radius: 999px; background: {{t.s1}}; box-shadow: {{t.shadow}}; display: inline-flex; align-items: center; gap: 6px; font-size: 15px; line-height: 20px; font-weight: 600; color: {{t.ink}}">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/></svg>Kitchen</span>
+  </div>
+  <div style="flex-grow: 1; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px">
+    <div style="position: relative; width: 280px; height: 280px">
+      <sc-if value="{{f1}}" hint-placeholder-val="{{true}}">
+        <div style="position: absolute; left: -18px; top: -18px; width: 312px; height: 312px; box-sizing: border-box; border-radius: 50%; border: 2px solid {{t.slateLine}}; opacity: 0.7"></div>
+        <div style="position: absolute; left: -44px; top: -44px; width: 364px; height: 364px; box-sizing: border-box; border-radius: 50%; border: 1.5px solid {{t.slateLine}}; opacity: 0.3"></div>
+      </sc-if>
+      <sc-if value="{{f3}}" hint-placeholder-val="{{false}}">
+        <div style="position: absolute; left: -50px; top: -50px; width: 380px; height: 380px; box-sizing: border-box; border-radius: 50%; border: 3px solid {{t.emberLine}}; opacity: 0.55"></div>
+        <div style="position: absolute; left: -130px; top: -130px; width: 540px; height: 540px; box-sizing: border-box; border-radius: 50%; border: 2px solid {{t.emberLine}}; opacity: 0.3"></div>
+        <div style="position: absolute; left: -230px; top: -230px; width: 740px; height: 740px; box-sizing: border-box; border-radius: 50%; border: 1.5px solid {{t.emberLine}}; opacity: 0.14"></div>
+      </sc-if>
+      <div style="position: absolute; left: 0; top: 0">
+        <dc-import name="Orb" tone="{{tone}}" size="280" ring="{{ring}}" theme="{{theme}}" hint-size="280px,280px"></dc-import>
+      </div>
+    </div>
+    <div style="height: 150px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 8px">
+      <sc-if value="{{f4}}" hint-placeholder-val="{{false}}">
+        <span role="timer" style="font-family: ui-rounded, 'SF Pro Rounded', Nunito, system-ui, sans-serif; font-size: 112px; line-height: 112px; font-weight: 200; letter-spacing: -3px; font-variant-numeric: tabular-nums">0:00</span>
+        <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 17px; line-height: 22px; font-weight: 600; color: {{t.emberInk}}">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Locked</span>
+      </sc-if>
+      <sc-if value="{{f1}}" hint-placeholder-val="{{true}}">
+        <span style="font-size: 22px; line-height: 28px; font-weight: 600">Hold still</span>
+      </sc-if>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"frame":{"editor":"enum","options":["1","2","3","4"],"default":"1"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const P = {
+      dark: { bg:'#0b0d10', s1:'#15181d', ink:'#f3f1ec', emberInk:'#ff9f43', emberLine:'#ff9f43', slateLine:'#8a94a6', shadow:'none' },
+      light: { bg:'#f6f4ef', s1:'#fffdf9', ink:'#15171b', emberInk:'#96490a', emberLine:'#c2650f', slateLine:'#6b7487', shadow:'0 2px 12px #0000000f' }
+    };
+    const theme = this.props.theme === 'light' ? 'light' : 'dark';
+    const f = Number(this.props.frame ?? 1);
+    return { t: P[theme], theme, f1: f === 1, f2: f === 2, f3: f === 3, f4: f === 4,
+      tone: f === 1 ? 'slate' : 'ember', ring: f === 1 ? 0 : (f === 2 ? 0.62 : 1) };
+  }
+}
+</script>
+</body>
+</html>

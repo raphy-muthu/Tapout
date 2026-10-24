@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tapout — Onboarding</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Nunito:wght@200;300;400;600&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: {{t.bg}}; color: {{t.ink}}; font-family: -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif; display: flex; flex-direction: column; padding: 56px 24px 40px; overflow: hidden">
+
+  <sc-if value="{{s1}}" hint-placeholder-val="{{true}}">
+    <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 48px">
+      <dc-import name="Orb" tone="slate" size="300" ring="0" theme="{{theme}}" hint-size="300px,300px"></dc-import>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center">
+        <h1 style="margin: 0; font-size: 34px; line-height: 41px; font-weight: 600; letter-spacing: 0.2px">Tap to lock.</h1>
+        <p style="margin: 0; font-size: 17px; line-height: 22px; color: {{t.ink2}}">Tap again to get your phone back.</p>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{s2}}" hint-placeholder-val="{{false}}">
+    <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 48px">
+      <div style="position: relative; width: 200px; height: 200px; border-radius: 56px; background: {{t.s1}}; box-shadow: {{t.shadow}}; display: grid; place-items: center; color: {{t.ink}}">
+        <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h10M7 21h10M8 3c0 5 8 6 8 9s-8 4-8 9M16 3c0 5-8 6-8 9s8 4 8 9"/></svg>
+        <div style="position: absolute; right: -10px; bottom: -10px; width: 64px; height: 64px; border-radius: 50%; background: #ff9f43; color: {{t.onFill}}; display: grid; place-items: center; box-shadow: 0 0 0 6px {{t.bg}}">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center">
+        <h1 style="margin: 0; font-size: 34px; line-height: 41px; font-weight: 600; letter-spacing: 0.2px">Allow Screen Time</h1>
+        <p style="margin: 0; font-size: 17px; line-height: 22px; color: {{t.ink2}}; max-width: 300px">Tapout uses it to block apps on this iPhone.</p>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{s3}}" hint-placeholder-val="{{false}}">
+    <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 24px">
+      <h1 style="margin: 0; font-size: 34px; line-height: 41px; font-weight: 600; letter-spacing: 0.2px">What should wait?</h1>
+      <div style="background: {{t.s1}}; box-shadow: {{t.shadow}}; border-radius: 24px; padding: 24px; display: flex; flex-direction: column; gap: 20px">
+        <div style="display: flex; align-items: baseline; justify-content: space-between">
+          <span style="font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0.4px; text-transform: uppercase; color: {{t.emberInk}}">Block</span>
+          <span style="font-family: ui-rounded, 'SF Pro Rounded', Nunito, system-ui, sans-serif; font-size: 28px; line-height: 32px">[6] <span style="font-family: -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif; font-size: 15px; color: {{t.ink2}}">apps</span></span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; color: {{t.ink}}">
+          <div aria-label="Video app" style="aspect-ratio: 1; border-radius: 16px; background: {{t.s2}}; display: grid; place-items: center"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10 9.5v5l4.5-2.5z"/></svg></div>
+          <div aria-label="Short video app" style="aspect-ratio: 1; border-radius: 16px; background: {{t.s2}}; display: grid; place-items: center"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="3" width="12" height="18" rx="3"/><path d="M10.5 9.5v5l4-2.5z"/></svg></div>
+          <div aria-label="Photo app" style="aspect-ratio: 1; border-radius: 16px; background: {{t.s2}}; display: grid; place-items: center"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="3"/><circle cx="12" cy="13.5" r="3.5"/><path d="M8 7l1.5-3h5L16 7"/></svg></div>
+          <div aria-label="Chat app" style="aspect-ratio: 1; border-radius: 16px; background: {{t.s2}}; display: grid; place-items: center"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg></div>
+          <div aria-label="Game" style="aspect-ratio: 1; border-radius: 16px; background: {{t.s2}}; display: grid; place-items: center"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="7" width="19" height="11" rx="5.5"/><path d="M7 12.5h4M9 10.5v4"/><circle cx="16" cy="11.5" r="1"/><circle cx="18" cy="13.5" r="1"/></svg></div>
+          <div aria-label="Shopping app" style="aspect-ratio: 1; border-radius: 16px; background: {{t.s2}}; display: grid; place-items: center"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h2l2.5 11h11L21 8H6.5"/><circle cx="9" cy="19" r="1.5"/><circle cx="17" cy="19" r="1.5"/></svg></div>
+          <div aria-label="News app" style="aspect-ratio: 1; border-radius: 16px; background: {{t.s2}}; display: grid; place-items: center"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 9h8M8 13h8M8 17h5"/></svg></div>
+          <button type="button" aria-label="Choose apps" style="aspect-ratio: 1; border: 0; padding: 0; border-radius: 16px; background: none; outline: 1.5px dashed {{t.ink3}}; outline-offset: -1.5px; color: {{t.ink2}}; display: grid; place-items: center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M12 6v12M6 12h12"/></svg></button>
+        </div>
+      </div>
+      <div style="background: {{t.s1}}; box-shadow: {{t.shadow}}; border-radius: 24px; padding: 24px; display: flex; flex-direction: column; gap: 16px">
+        <span style="font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0.4px; text-transform: uppercase; color: {{t.slateInk}}">Always allowed</span>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px">
+          <span style="height: 44px; box-sizing: border-box; padding: 0 16px; border-radius: 999px; background: {{t.s2}}; display: inline-flex; align-items: center; font-size: 15px">Phone</span>
+          <span style="height: 44px; box-sizing: border-box; padding: 0 16px; border-radius: 999px; background: {{t.s2}}; display: inline-flex; align-items: center; font-size: 15px">Messages</span>
+          <span style="height: 44px; box-sizing: border-box; padding: 0 16px; border-radius: 999px; background: {{t.s2}}; display: inline-flex; align-items: center; font-size: 15px">Maps</span>
+          <button type="button" style="height: 44px; border: 0; padding: 0 16px; border-radius: 999px; background: none; color: {{t.ink2}}; font: 400 15px/20px -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif">+ Add</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{s4}}" hint-placeholder-val="{{false}}">
+    <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 32px">
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 20px; padding-top: 16px">
+        <div style="position: relative; width: 220px; height: 220px; display: grid; place-items: center">
+          <div style="position: absolute; left: 0; top: 0; width: 216px; height: 216px; border-radius: 50%; border: 2px solid {{t.slateLine}}; opacity: 0.6"></div>
+          <div style="position: absolute; left: 28px; top: 28px; width: 164px; height: 164px; border-radius: 50%; background: #8a94a62e; filter: blur(20px)"></div>
+          <div style="position: relative; width: 168px; height: 168px; border-radius: 50%; background: {{t.s2}}; display: grid; place-items: center; color: {{t.ink}}">
+            <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" aria-hidden="true"><path d="M6 8.5a5 5 0 0 1 0 7"/><path d="M9.5 6a8.5 8.5 0 0 1 0 12"/><path d="M13 3.5a12 12 0 0 1 0 17"/></svg>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center">
+          <h1 style="margin: 0; font-size: 28px; line-height: 34px; font-weight: 600">Pair your first tag</h1>
+          <p style="margin: 0; font-size: 15px; line-height: 20px; color: {{t.ink2}}">Hold the top of your phone to it.</p>
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 12px">
+        <span style="font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0.4px; text-transform: uppercase; color: {{t.ink3}}">Your interests</span>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+          <sc-for list="{{chips}}" as="c" hint-placeholder-count="6">
+            <button type="button" onClick="{{c.pick}}" aria-pressed="{{c.on}}" style="height: 44px; border: 0; border-radius: 999px; background: {{c.bg}}; color: {{c.fg}}; font: 500 15px/20px -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif; cursor: pointer">{{c.label}}</button>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <div style="display: flex; flex-direction: column; gap: 24px; align-items: stretch">
+    <div style="display: flex; gap: 8px; justify-content: center" aria-label="Step {{stepNum}} of 4">
+      <sc-for list="{{dots}}" as="d" hint-placeholder-count="4">
+        <span style="width: {{d.w}}; height: 8px; border-radius: 999px; background: {{d.c}}"></span>
+      </sc-for>
+    </div>
+    <button type="button" onClick="{{next}}" style="height: 56px; border: 0; border-radius: 999px; background: #8a94a6; color: {{t.onFill}}; font: 600 17px/22px -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif; cursor: pointer">{{cta}}</button>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"step":{"editor":"enum","options":["1","2","3","4"],"default":"1"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { picked: { Sports: true, Reading: true }, step: null }; }
+  renderVals() {
+    const P = {
+      dark: { bg:'#0b0d10', s1:'#15181d', s2:'#1e222a', ink:'#f3f1ec', ink2:'#a4abb6', ink3:'#8a919c', emberInk:'#ff9f43', slateInk:'#8a94a6', slateLine:'#8a94a6', onFill:'#0b0d10', shadow:'none' },
+      light: { bg:'#f6f4ef', s1:'#fffdf9', s2:'#ece8e0', ink:'#15171b', ink2:'#565c66', ink3:'#5f656f', emberInk:'#96490a', slateInk:'#535c6c', slateLine:'#6b7487', onFill:'#15171b', shadow:'0 2px 12px #0000000f' }
+    };
+    const theme = this.props.theme === 'light' ? 'light' : 'dark';
+    const t = P[theme];
+    const step = Number(this.state.step ?? this.props.step ?? 1);
+    const names = ['Sports','Movies','Reading','Music','Travel','Fitness'];
+    const chips = names.map((n) => {
+      const on = !!this.state.picked[n];
+      return { label: n, on, bg: on ? t.ink : t.s1, fg: on ? t.bg : t.ink2,
+        pick: () => this.setState({ picked: { ...this.state.picked, [n]: !on } }) };
+    });
+    const dots = [1,2,3,4].map((i) => ({ w: i === step ? '24px' : '8px', c: i === step ? t.ink : t.ink3 }));
+    const ctas = { 1: 'Get started', 2: 'Allow', 3: 'Continue', 4: 'Scan tag' };
+    return { t, theme, s1: step === 1, s2: step === 2, s3: step === 3, s4: step === 4, stepNum: step, chips, dots, cta: ctas[step],
+      next: () => this.setState({ step: step >= 4 ? 1 : step + 1 }) };
+  }
+}
+</script>
+</body>
+</html>

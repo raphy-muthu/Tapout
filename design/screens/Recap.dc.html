@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tapout — Weekly recap story</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Nunito:wght@200;300;400;600&amp;display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div style="width: 1080px; height: 1920px; box-sizing: border-box; background: {{t.bg}}; color: {{t.ink}}; font-family: -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; padding: 240px 96px 240px; overflow: hidden">
+  <div style="display: flex; flex-direction: column; align-items: center; gap: 8px">
+    <span style="font-family: ui-rounded, 'SF Pro Rounded', Nunito, system-ui, sans-serif; font-size: 56px; line-height: 64px; font-weight: 600; letter-spacing: -0.5px">Tapout</span>
+    <span style="font-size: 36px; line-height: 44px; color: {{t.ink2}}">Week of [Oct 19]</span>
+  </div>
+  <div style="margin-top: 56px">
+    <dc-import name="Orb" tone="ember" size="560" ring="1" theme="{{theme}}" hint-size="560px,560px"></dc-import>
+  </div>
+  <div style="margin-top: 32px; display: flex; flex-direction: column; align-items: center; gap: 4px">
+    <span style="font-family: ui-rounded, 'SF Pro Rounded', Nunito, system-ui, sans-serif; font-size: 200px; line-height: 200px; font-weight: 200; letter-spacing: -6px">[3h 12m]</span>
+    <span style="font-size: 48px; line-height: 58px; color: {{t.ink2}}">phone-free</span>
+  </div>
+  <div style="margin-top: 56px; width: 100%; box-sizing: border-box; background: {{t.s1}}; box-shadow: {{t.shadow}}; border-radius: 64px; padding: 48px 56px; display: flex; align-items: center; gap: 40px">
+    <span style="width: 120px; height: 120px; flex-shrink: 0; border-radius: 50%; background: {{t.emberGlow}}; color: {{t.emberInk}}; display: grid; place-items: center">
+      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="12" rx="9.5" ry="5.5" transform="rotate(-35 12 12)"/><path d="M9.5 14.5l5-5M10.5 11l1 1M12 9.5l1 1M13.5 12.5l-1-1"/></svg>
+    </span>
+    <span style="font-size: 56px; line-height: 66px; font-weight: 600">As long as an entire NFL game</span>
+  </div>
+  <div style="flex-grow: 1"></div>
+  <div role="img" aria-label="Phone-free time per day" style="width: 100%; height: 160px; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 24px; align-items: end">
+    <sc-for list="{{bars}}" as="b" hint-placeholder-count="7">
+      <div style="height: {{b.h}}; border-radius: 24px; background: {{b.c}}"></div>
+    </sc-for>
+  </div>
+  <div style="margin-top: 16px; width: 100%; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 24px">
+    <sc-for list="{{bars}}" as="b" hint-placeholder-count="7">
+      <span style="text-align: center; font-size: 32px; line-height: 40px; font-weight: 500; color: {{t.ink3}}">{{b.d}}</span>
+    </sc-for>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1080,"height":1920}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const P = {
+      dark: { bg:'#0b0d10', s1:'#15181d', s2:'#2a2f38', ink:'#f3f1ec', ink2:'#a4abb6', ink3:'#8a919c', emberInk:'#ff9f43', emberGlow:'#ff9f4329', shadow:'none' },
+      light: { bg:'#f6f4ef', s1:'#fffdf9', s2:'#ddd8ce', ink:'#15171b', ink2:'#565c66', ink3:'#5f656f', emberInk:'#96490a', emberGlow:'#ff9f4338', shadow:'0 6px 32px #0000000f' }
+    };
+    const theme = this.props.theme === 'light' ? 'light' : 'dark';
+    const t = P[theme];
+    const vals = [0.45, 0.3, 0.62, 0.38, 1, 0.7, 0.2];
+    const bars = ['M','T','W','T','F','S','S'].map((d, i) => ({ d, h: Math.round(24 + vals[i] * 136) + 'px', c: i === 4 ? '#ff9f43' : t.s2 }));
+    return { t, theme, bars };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tapout — Home</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Nunito:wght@200;300;400;600&amp;display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: {{t.bg}}; color: {{t.ink}}; font-family: -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif; position: relative; overflow: hidden; display: flex; flex-direction: column; padding: 56px 24px 112px">
+  <div style="display: flex; align-items: center; justify-content: space-between; height: 44px">
+    <button type="button" style="height: 44px; border: 0; padding: 0 16px 0 14px; border-radius: 999px; background: {{t.s1}}; box-shadow: {{t.shadow}}; color: {{headCol}}; display: inline-flex; align-items: center; gap: 6px; font: 600 15px/20px -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif">
+      <sc-if value="{{locked}}" hint-placeholder-val="{{false}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></sc-if>
+      <span>Deep work</span>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+    </button>
+    <button type="button" aria-label="Settings" style="width: 44px; height: 44px; border: 0; border-radius: 999px; background: {{t.s1}}; box-shadow: {{t.shadow}}; color: {{t.ink2}}; display: grid; place-items: center; padding: 0">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6"/></svg>
+    </button>
+  </div>
+
+  <sc-if value="{{unlocked}}" hint-placeholder-val="{{true}}">
+    <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 32px">
+      <dc-import name="Orb" tone="slate" size="300" ring="0" theme="{{theme}}" hint-size="300px,300px"></dc-import>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 4px">
+        <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 17px; line-height: 22px; font-weight: 600; color: {{t.slateInk}}">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 7.6-1.7"/></svg>Unlocked</span>
+        <span style="font-size: 15px; line-height: 20px; color: {{t.ink3}}">[2h 40m] phone-free today</span>
+      </div>
+    </div>
+    <button type="button" style="height: 56px; border: 0; border-radius: 999px; background: #8a94a6; color: {{t.onFill}}; font: 600 17px/22px -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif; display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 8px">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M6 8.5a5 5 0 0 1 0 7"/><path d="M9.5 6a8.5 8.5 0 0 1 0 12"/><path d="M13 3.5a12 12 0 0 1 0 17"/></svg>Scan</button>
+  </sc-if>
+
+  <sc-if value="{{locked}}" hint-placeholder-val="{{false}}">
+    <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px">
+      <dc-import name="Orb" tone="ember" size="244" ring="1" theme="{{theme}}" hint-size="244px,244px"></dc-import>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 8px">
+        <span role="timer" aria-label="Locked for {{elapsed}}" style="font-family: ui-rounded, 'SF Pro Rounded', Nunito, system-ui, sans-serif; font-size: 112px; line-height: 112px; font-weight: 200; letter-spacing: -3px; font-variant-numeric: tabular-nums">{{elapsed}}</span>
+        <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 17px; line-height: 22px; font-weight: 600; color: {{t.emberInk}}">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Locked</span>
+      </div>
+    </div>
+    <button type="button" style="height: 44px; border: 0; background: none; color: {{t.ink2}}; font: 400 15px/20px -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif; margin-bottom: 8px">Emergency pass · [3] left</button>
+  </sc-if>
+
+  <sc-if value="{{emergency}}" hint-placeholder-val="{{false}}">
+    <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px">
+      <dc-import name="Orb" tone="slate" ring-tone="ember" size="244" ring="{{remainFrac}}" theme="{{theme}}" hint-size="244px,244px"></dc-import>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 4px">
+        <span style="font-size: 15px; line-height: 20px; color: {{t.ink2}}">Relocks in</span>
+        <span role="timer" aria-label="Relocks in {{remaining}}" style="font-family: ui-rounded, 'SF Pro Rounded', Nunito, system-ui, sans-serif; font-size: 112px; line-height: 112px; font-weight: 200; letter-spacing: -3px; font-variant-numeric: tabular-nums">{{remaining}}</span>
+        <span style="font-size: 13px; line-height: 18px; color: {{t.emberInk}}; font-weight: 500">Emergency pass · [2] of 5 left</span>
+      </div>
+    </div>
+    <button type="button" style="height: 56px; border: 0; border-radius: 999px; background: #ff9f43; color: {{t.onFill}}; font: 600 17px/22px -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif; margin-bottom: 8px">Relock now</button>
+  </sc-if>
+
+  <div style="position: absolute; left: 0; bottom: 0">
+    <dc-import name="TabBar" active="home" theme="{{theme}}" hint-size="390px,96px"></dc-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"state":{"editor":"enum","options":["unlocked","locked","emergency"],"default":"unlocked"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  componentDidMount() { this.t0 = Date.now(); this.iv = setInterval(() => this.forceUpdate(), 1000); }
+  componentWillUnmount() { clearInterval(this.iv); }
+  renderVals() {
+    const P = {
+      dark: { bg:'#0b0d10', s1:'#15181d', s2:'#1e222a', ink:'#f3f1ec', ink2:'#a4abb6', ink3:'#8a919c', emberInk:'#ff9f43', slateInk:'#8a94a6', onFill:'#0b0d10', shadow:'none' },
+      light: { bg:'#f6f4ef', s1:'#fffdf9', s2:'#ece8e0', ink:'#15171b', ink2:'#565c66', ink3:'#5f656f', emberInk:'#96490a', slateInk:'#535c6c', onFill:'#15171b', shadow:'0 2px 12px #0000000f' }
+    };
+    const theme = this.props.theme === 'light' ? 'light' : 'dark';
+    const t = P[theme];
+    const st = this.props.state ?? 'unlocked';
+    const secs = Math.floor((Date.now() - (this.t0 ?? Date.now())) / 1000);
+    const fmt = (s) => s >= 3600 ? Math.floor(s / 3600) + ':' + String(Math.floor(s % 3600 / 60)).padStart(2, '0') : Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+    const up = 47 * 60 + 12 + secs;
+    const left = Math.max(0, 4 * 60 + 32 - secs);
+    return {
+      t, theme,
+      unlocked: st === 'unlocked', locked: st === 'locked', emergency: st === 'emergency',
+      headCol: st === 'locked' ? t.emberInk : t.ink,
+      elapsed: fmt(up), remaining: fmt(left), remainFrac: left / 300
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tapout — Widgets</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Nunito:wght@200;300;400;600&amp;display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: {{t.wall}}; color: {{t.ink}}; font-family: -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif; display: flex; flex-direction: column; gap: 14px; padding: 40px 13px">
+  <span style="padding-left: 8px; font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0.4px; text-transform: uppercase; color: {{t.ink3}}">Small · locked + unlocked</span>
+  <div style="display: flex; gap: 24px">
+    <div style="width: 170px; height: 170px; box-sizing: border-box; border-radius: 24px; background: {{t.card}}; box-shadow: {{t.shadow}}; padding: 16px; display: flex; flex-direction: column; justify-content: space-between">
+      <dc-import name="Orb" tone="ember" size="64" ring="1" theme="{{theme}}" hint-size="64px,64px"></dc-import>
+      <span style="display: flex; flex-direction: column">
+        <span style="font-family: ui-rounded, 'SF Pro Rounded', Nunito, system-ui, sans-serif; font-size: 34px; line-height: 38px; font-weight: 300; font-variant-numeric: tabular-nums">47:12</span>
+        <span style="font-size: 13px; line-height: 18px; font-weight: 600; color: {{t.emberInk}}">Locked</span>
+      </span>
+    </div>
+    <div style="width: 170px; height: 170px; box-sizing: border-box; border-radius: 24px; background: {{t.card}}; box-shadow: {{t.shadow}}; padding: 16px; display: flex; flex-direction: column; justify-content: space-between">
+      <dc-import name="Orb" tone="slate" size="64" ring="0" theme="{{theme}}" hint-size="64px,64px"></dc-import>
+      <span style="display: flex; flex-direction: column">
+        <span style="font-family: ui-rounded, 'SF Pro Rounded', Nunito, system-ui, sans-serif; font-size: 34px; line-height: 38px; font-weight: 300">[2h 40m]</span>
+        <span style="font-size: 13px; line-height: 18px; font-weight: 600; color: {{t.slateInk}}">today</span>
+      </span>
+    </div>
+  </div>
+
+  <span style="margin-top: 24px; padding-left: 8px; font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0.4px; text-transform: uppercase; color: {{t.ink3}}">Medium · this week</span>
+  <div style="width: 364px; height: 170px; box-sizing: border-box; border-radius: 24px; background: {{t.card}}; box-shadow: {{t.shadow}}; padding: 16px 20px; display: flex; align-items: center; gap: 20px">
+    <dc-import name="Orb" tone="ember" size="112" ring="1" theme="{{theme}}" hint-size="112px,112px"></dc-import>
+    <span style="flex-grow: 1; display: flex; flex-direction: column; gap: 10px">
+      <span style="display: flex; flex-direction: column">
+        <span style="font-family: ui-rounded, 'SF Pro Rounded', Nunito, system-ui, sans-serif; font-size: 40px; line-height: 44px; font-weight: 300">[3h 12m]</span>
+        <span style="font-size: 13px; line-height: 18px; color: {{t.ink2}}">phone-free this week</span>
+      </span>
+      <span role="img" aria-label="Daily phone-free time" style="height: 40px; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; align-items: end">
+        <sc-for list="{{bars}}" as="b" hint-placeholder-count="7">
+          <span style="height: {{b.h}}; border-radius: 4px; background: {{b.c}}"></span>
+        </sc-for>
+      </span>
+    </span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const P = {
+      dark: { wall:'#0b0d10', card:'#15181d', s2:'#2a2f38', ink:'#f3f1ec', ink2:'#a4abb6', ink3:'#8a919c', emberInk:'#ff9f43', slateInk:'#8a94a6', shadow:'none' },
+      light: { wall:'#ece8e0', card:'#fffdf9', s2:'#ddd8ce', ink:'#15171b', ink2:'#565c66', ink3:'#5f656f', emberInk:'#96490a', slateInk:'#535c6c', shadow:'0 2px 12px #0000000f' }
+    };
+    const theme = this.props.theme === 'light' ? 'light' : 'dark';
+    const t = P[theme];
+    const vals = [0.45, 0.3, 0.62, 0.38, 1, 0.7, 0.2];
+    const bars = vals.map((v, i) => ({ h: Math.round(6 + v * 34) + 'px', c: i === 4 ? '#ff9f43' : t.s2 }));
+    return { t, theme, bars };
+  }
+}
+</script>
+</body>
+</html>

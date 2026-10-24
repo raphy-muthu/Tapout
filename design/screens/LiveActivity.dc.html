@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tapout — Live Activity</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Nunito:wght@200;300;400;600&amp;display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: {{t.wall}}; color: {{t.ink}}; font-family: -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif; display: flex; flex-direction: column; gap: 14px; padding: 40px 16px">
+  <span style="padding-left: 8px; font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0.4px; text-transform: uppercase; color: {{t.ink3}}">Dynamic Island · compact + minimal</span>
+  <div style="display: flex; align-items: center; justify-content: center; gap: 12px">
+    <div style="width: 250px; height: 37px; box-sizing: border-box; padding: 0 12px 0 8px; border-radius: 999px; background: #000000; display: flex; align-items: center; justify-content: space-between">
+      <dc-import name="Orb" tone="ember" size="26" ring="1" theme="dark" hint-size="26px,26px"></dc-import>
+      <span style="font-family: ui-rounded, 'SF Pro Rounded', Nunito, system-ui, sans-serif; font-size: 16px; line-height: 20px; font-weight: 600; color: #ff9f43; font-variant-numeric: tabular-nums">{{elapsed}}</span>
+    </div>
+    <div style="width: 37px; height: 37px; border-radius: 50%; background: #000000; display: grid; place-items: center">
+      <dc-import name="Orb" tone="ember" size="26" ring="1" theme="dark" hint-size="26px,26px"></dc-import>
+    </div>
+  </div>
+
+  <span style="margin-top: 16px; padding-left: 8px; font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0.4px; text-transform: uppercase; color: {{t.ink3}}">Dynamic Island · expanded</span>
+  <div style="height: 168px; box-sizing: border-box; border-radius: 44px; background: #000000; padding: 20px 24px; display: flex; flex-direction: column; justify-content: space-between; color: #f3f1ec">
+    <div style="display: flex; align-items: center; gap: 14px">
+      <dc-import name="Orb" tone="ember" size="64" ring="1" theme="dark" hint-size="64px,64px"></dc-import>
+      <span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px">
+        <span style="font-size: 17px; line-height: 22px; font-weight: 600">Deep work</span>
+        <span style="font-size: 13px; line-height: 18px; color: #a4abb6">Sealed at Kitchen</span>
+      </span>
+      <span style="font-family: ui-rounded, 'SF Pro Rounded', Nunito, system-ui, sans-serif; font-size: 40px; line-height: 44px; font-weight: 300; font-variant-numeric: tabular-nums">{{elapsed}}</span>
+    </div>
+    <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; line-height: 18px; color: #ff9f43; font-weight: 500">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M6 8.5a5 5 0 0 1 0 7"/><path d="M9.5 6a8.5 8.5 0 0 1 0 12"/><path d="M13 3.5a12 12 0 0 1 0 17"/></svg>Tap a tag to unlock</span>
+  </div>
+
+  <span style="margin-top: 16px; padding-left: 8px; font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0.4px; text-transform: uppercase; color: {{t.ink3}}">Lock Screen</span>
+  <div style="border-radius: 24px; background: {{t.card}}; box-shadow: {{t.shadow}}; padding: 20px; display: flex; align-items: center; gap: 16px">
+    <dc-import name="Orb" tone="ember" size="80" ring="1" theme="{{theme}}" hint-size="80px,80px"></dc-import>
+    <span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px">
+      <span style="font-family: ui-rounded, 'SF Pro Rounded', Nunito, system-ui, sans-serif; font-size: 48px; line-height: 52px; font-weight: 300; letter-spacing: -0.5px; font-variant-numeric: tabular-nums">{{elapsed}}</span>
+      <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 15px; line-height: 20px; font-weight: 600; color: {{t.emberInk}}">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Deep work · Kitchen</span>
+    </span>
+  </div>
+  <span style="padding: 0 8px; font-size: 13px; line-height: 18px; color: {{t.ink3}}">Timer counts up live. Island is always black; the Lock Screen card follows the system appearance.</span>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  componentDidMount() { this.t0 = Date.now(); this.iv = setInterval(() => this.forceUpdate(), 1000); }
+  componentWillUnmount() { clearInterval(this.iv); }
+  renderVals() {
+    const P = {
+      dark: { wall:'#0b0d10', card:'#1e222a', ink:'#f3f1ec', ink3:'#8a919c', emberInk:'#ff9f43', shadow:'none' },
+      light: { wall:'#ece8e0', card:'#fffdf9', ink:'#15171b', ink3:'#5f656f', emberInk:'#96490a', shadow:'0 2px 12px #0000000f' }
+    };
+    const theme = this.props.theme === 'light' ? 'light' : 'dark';
+    const s = 47 * 60 + 12 + Math.floor((Date.now() - (this.t0 ?? Date.now())) / 1000);
+    return { t: P[theme], theme, elapsed: Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') };
+  }
+}
+</script>
+</body>
+</html>

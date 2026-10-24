@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tapout — Emergency pass</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Nunito:wght@200;300;400;600&amp;display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: {{t.bg}}; color: {{t.ink}}; font-family: -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif; display: flex; flex-direction: column; padding: 56px 24px 40px; overflow: hidden">
+  <div style="height: 44px; display: flex; align-items: center; justify-content: space-between">
+    <button type="button" aria-label="Close" style="width: 44px; height: 44px; border: 0; border-radius: 999px; background: {{t.s1}}; box-shadow: {{t.shadow}}; color: {{t.ink2}}; display: grid; place-items: center; padding: 0">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+    <span style="font-size: 17px; line-height: 22px; font-weight: 600">Emergency pass</span>
+    <span style="width: 44px"></span>
+  </div>
+
+  <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; padding-top: 40px">
+    <div style="display: flex; gap: 10px" role="img" aria-label="[3] of 5 passes left">
+      <sc-for list="{{pips}}" as="p" hint-placeholder-count="5">
+        <span style="width: 40px; height: 12px; border-radius: 999px; background: {{p.c}}"></span>
+      </sc-for>
+    </div>
+    <span style="font-size: 15px; line-height: 20px; color: {{t.ink2}}"><span style="font-family: ui-rounded, 'SF Pro Rounded', Nunito, system-ui, sans-serif; font-weight: 600; color: {{t.ink}}">[3]</span> of 5 left. Passes never refill.</span>
+  </div>
+
+  <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px">
+    <div style="position: relative; width: 248px; height: 248px">
+      <div style="position: absolute; left: 24px; top: 24px; width: 200px; height: 200px; border-radius: 50%; background: #ff9f43; opacity: {{glowOp}}; filter: blur(40px)"></div>
+      <svg width="248" height="248" viewBox="0 0 248 248" aria-hidden="true" style="position: absolute; left: 0; top: 0">
+        <circle cx="124" cy="124" r="118" fill="none" stroke="{{t.track}}" stroke-width="8"></circle>
+        <circle cx="124" cy="124" r="118" fill="none" stroke="{{t.emberLine}}" stroke-width="8" stroke-linecap="round" stroke-dasharray="741.4" stroke-dashoffset="{{dashOff}}" transform="rotate(-90 124 124)"></circle>
+      </svg>
+      <button type="button" onPointerDown="{{start}}" onPointerUp="{{stop}}" onPointerLeave="{{stop}}" aria-label="Hold for 10 seconds to use a pass" style="position: absolute; left: 22px; top: 22px; width: 204px; height: 204px; border: 0; border-radius: 50%; background: {{t.s1}}; box-shadow: {{t.shadow}}; color: {{t.ink}}; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; touch-action: none; user-select: none">
+        <span style="font-family: ui-rounded, 'SF Pro Rounded', Nunito, system-ui, sans-serif; font-size: 72px; line-height: 76px; font-weight: 300; font-variant-numeric: tabular-nums">{{count}}</span>
+        <span style="font-size: 13px; line-height: 18px; color: {{t.ink2}}">{{holdLabel}}</span>
+      </button>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center">
+      <span style="font-size: 22px; line-height: 28px; font-weight: 600">{{title}}</span>
+      <span style="font-size: 15px; line-height: 20px; color: {{t.ink2}}">Apps open for [5 min], then relock.</span>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { prog: 0, done: false }; }
+  componentWillUnmount() { clearInterval(this.iv); }
+  renderVals() {
+    const P = {
+      dark: { bg:'#0b0d10', s1:'#15181d', ink:'#f3f1ec', ink2:'#a4abb6', emberLine:'#ff9f43', track:'#ffffff14', used:'#2a2f38', shadow:'none' },
+      light: { bg:'#f6f4ef', s1:'#fffdf9', ink:'#15171b', ink2:'#565c66', emberLine:'#c2650f', track:'#15171b14', used:'#ddd8ce', shadow:'0 2px 12px #0000000f' }
+    };
+    const theme = this.props.theme === 'light' ? 'light' : 'dark';
+    const t = P[theme];
+    const { prog, done } = this.state;
+    const start = () => {
+      if (done) return;
+      clearInterval(this.iv);
+      this.iv = setInterval(() => {
+        const n = Math.min(1, this.state.prog + 0.01);
+        this.setState({ prog: n, done: n >= 1 });
+        if (n >= 1) clearInterval(this.iv);
+      }, 100);
+    };
+    const stop = () => { clearInterval(this.iv); if (!this.state.done) this.setState({ prog: 0 }); };
+    const pips = [0,1,2,3,4].map((i) => ({ c: i < 3 ? '#ff9f43' : t.used }));
+    const secsLeft = Math.ceil(10 * (1 - prog));
+    return { t, pips, start, stop,
+      dashOff: (741.4 * (1 - prog)).toFixed(1),
+      glowOp: (0.08 + prog * 0.35).toFixed(2),
+      count: done ? '0' : String(secsLeft),
+      holdLabel: done ? 'Pass used' : (prog > 0 ? 'Keep holding' : 'Hold'),
+      title: done ? 'Apps open' : 'Hold for 10 seconds' };
+  }
+}
+</script>
+</body>
+</html>

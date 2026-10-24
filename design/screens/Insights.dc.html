@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tapout — Insights</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Nunito:wght@200;300;400;600&amp;display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: {{t.bg}}; color: {{t.ink}}; font-family: -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif; position: relative; overflow: hidden; display: flex; flex-direction: column; padding: 56px 24px 112px">
+
+  <sc-if value="{{isWeek}}" hint-placeholder-val="{{true}}">
+    <div style="display: flex; align-items: center; justify-content: space-between; height: 44px">
+      <span style="font-size: 17px; line-height: 22px; font-weight: 600">This week</span>
+      <button type="button" aria-label="Share recap" style="width: 44px; height: 44px; border: 0; border-radius: 999px; background: {{t.s1}}; box-shadow: {{t.shadow}}; color: {{t.ink2}}; display: grid; place-items: center; padding: 0">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M7.5 7.5L12 3l4.5 4.5M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>
+      </button>
+    </div>
+    <div style="margin-top: 32px; display: flex; flex-direction: column; gap: 4px">
+      <span style="font-family: ui-rounded, 'SF Pro Rounded', Nunito, system-ui, sans-serif; font-size: 96px; line-height: 96px; font-weight: 200; letter-spacing: -2px">[3h]</span>
+      <span style="font-size: 17px; line-height: 22px; color: {{t.ink2}}">phone-free this week</span>
+    </div>
+    <div style="margin-top: 20px; background: {{t.s1}}; box-shadow: {{t.shadow}}; border-radius: 24px; padding: 20px; display: flex; align-items: center; gap: 16px">
+      <span style="width: 56px; height: 56px; flex-shrink: 0; border-radius: 50%; background: {{t.emberGlow}}; color: {{t.emberInk}}; display: grid; place-items: center">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="12" rx="9.5" ry="5.5" transform="rotate(-35 12 12)"/><path d="M9.5 14.5l5-5M10.5 11l1 1M12 9.5l1 1M13.5 12.5l-1-1"/></svg>
+      </span>
+      <span style="font-size: 20px; line-height: 26px; font-weight: 600">As long as an entire NFL game</span>
+    </div>
+    <div style="margin-top: 32px; display: flex; flex-direction: column; gap: 12px">
+      <div role="img" aria-label="Phone-free time per day this week" style="height: 168px; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; align-items: end">
+        <sc-for list="{{bars}}" as="b" hint-placeholder-count="7">
+          <div style="display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 6px; height: 168px">
+            <span style="font-family: ui-rounded, 'SF Pro Rounded', Nunito, system-ui, sans-serif; font-size: 12px; line-height: 16px; color: {{t.ink3}}; opacity: {{b.lblOp}}">{{b.v}}</span>
+            <div style="width: 100%; height: {{b.h}}; border-radius: 10px; background: {{b.c}}"></div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px">
+        <sc-for list="{{bars}}" as="b" hint-placeholder-count="7">
+          <span style="text-align: center; font-size: 12px; line-height: 16px; font-weight: 500; color: {{b.lc}}">{{b.d}}</span>
+        </sc-for>
+      </div>
+    </div>
+    <div style="margin-top: 24px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+      <div style="background: {{t.s1}}; box-shadow: {{t.shadow}}; border-radius: 20px; padding: 16px 20px; display: flex; flex-direction: column; gap: 2px">
+        <span style="font-family: ui-rounded, 'SF Pro Rounded', Nunito, system-ui, sans-serif; font-size: 28px; line-height: 32px">[12]</span>
+        <span style="font-size: 13px; line-height: 18px; color: {{t.ink3}}">locks</span>
+      </div>
+      <div style="background: {{t.s1}}; box-shadow: {{t.shadow}}; border-radius: 20px; padding: 16px 20px; display: flex; flex-direction: column; gap: 2px">
+        <span style="font-family: ui-rounded, 'SF Pro Rounded', Nunito, system-ui, sans-serif; font-size: 28px; line-height: 32px">[1h 05m]</span>
+        <span style="font-size: 13px; line-height: 18px; color: {{t.ink3}}">longest</span>
+      </div>
+    </div>
+    <div style="position: absolute; left: 0; bottom: 0">
+      <dc-import name="TabBar" active="insights" theme="{{theme}}" hint-size="390px,96px"></dc-import>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{isMilestone}}" hint-placeholder-val="{{false}}">
+    <div style="position: absolute; left: 0; top: 0; width: 390px; height: 844px; padding: 56px 24px 40px; box-sizing: border-box; display: flex; flex-direction: column">
+      <div style="height: 44px; display: flex; justify-content: flex-end">
+        <button type="button" aria-label="Close" style="width: 44px; height: 44px; border: 0; border-radius: 999px; background: {{t.s1}}; box-shadow: {{t.shadow}}; color: {{t.ink2}}; display: grid; place-items: center; padding: 0">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 40px">
+        <div style="position: relative; width: 240px; height: 240px">
+          <div style="position: absolute; left: -40px; top: -40px; width: 320px; height: 320px; box-sizing: border-box; border-radius: 50%; border: 2px solid {{t.emberLine}}; opacity: 0.4"></div>
+          <div style="position: absolute; left: -84px; top: -84px; width: 408px; height: 408px; box-sizing: border-box; border-radius: 50%; border: 1.5px solid {{t.emberLine}}; opacity: 0.2"></div>
+          <div style="position: absolute; left: -132px; top: -132px; width: 504px; height: 504px; box-sizing: border-box; border-radius: 50%; border: 1px solid {{t.emberLine}}; opacity: 0.1"></div>
+          <dc-import name="Orb" tone="ember" size="240" ring="1" theme="{{theme}}" hint-size="240px,240px"></dc-import>
+        </div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center">
+          <span style="font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0.4px; text-transform: uppercase; color: {{t.emberInk}}">Milestone</span>
+          <h1 style="margin: 0; font-size: 34px; line-height: 41px; font-weight: 600">First 10 hours</h1>
+          <p style="margin: 0; font-size: 17px; line-height: 22px; color: {{t.ink2}}">About [5] movies' worth of time, back.</p>
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <button type="button" style="height: 56px; border: 0; border-radius: 999px; background: #ff9f43; color: {{t.onFill}}; font: 600 17px/22px -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif">Share</button>
+        <button type="button" style="height: 44px; border: 0; background: none; color: {{t.ink2}}; font: 400 17px/22px -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif">Done</button>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"view":{"editor":"enum","options":["week","milestone"],"default":"week"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const P = {
+      dark: { bg:'#0b0d10', s1:'#15181d', s2:'#1e222a', ink:'#f3f1ec', ink2:'#a4abb6', ink3:'#8a919c', emberInk:'#ff9f43', emberLine:'#ff9f43', emberGlow:'#ff9f4329', onFill:'#0b0d10', shadow:'none' },
+      light: { bg:'#f6f4ef', s1:'#fffdf9', s2:'#ece8e0', ink:'#15171b', ink2:'#565c66', ink3:'#5f656f', emberInk:'#96490a', emberLine:'#c2650f', emberGlow:'#ff9f4338', onFill:'#15171b', shadow:'0 2px 12px #0000000f' }
+    };
+    const theme = this.props.theme === 'light' ? 'light' : 'dark';
+    const t = P[theme];
+    const days = ['M','T','W','T','F','S','S'];
+    const vals = [0.45, 0.3, 0.62, 0.38, 1, 0.7, 0.2];
+    const labels = ['[24m]','[16m]','[33m]','[20m]','[52m]','[37m]','[10m]'];
+    const today = 4;
+    const bars = days.map((d, i) => ({ d, v: labels[i], h: Math.round(20 + vals[i] * 120) + 'px',
+      c: i === today ? '#ff9f43' : t.s2, lc: i === today ? t.ink : t.ink3, lblOp: i === today ? 1 : 0 }));
+    const view = this.props.view === 'milestone' ? 'milestone' : 'week';
+    return { t, theme, bars, isWeek: view === 'week', isMilestone: view === 'milestone' };
+  }
+}
+</script>
+</body>
+</html>
