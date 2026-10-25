@@ -53,7 +53,7 @@ struct FloatingTabBar: View {
         switch tab {
         case .home: HomeGlyph()
         case .modes: Image(systemName: "slider.horizontal.3").font(.system(size: 20))
-        case .places: Image(systemName: "mappin").font(.system(size: 20))
+        case .places: PinGlyph()
         case .insights: Image(systemName: "chart.bar").font(.system(size: 20))
         }
     }

@@ -1622,3 +1622,19 @@ struct TapoutApp: App {
 - [ ] **Step 3:** Compare each screenshot against `Home.dc.html`: orb sizes (300 / 244), header pill colour, state word colours, button fill (slate Scan, ember Relock now), tab bar active cell.
 - [ ] **Step 4:** From unlocked, tap Scan and capture the lock moment; confirm it settles into Locked at 0:00 and counts up. Tap the orb to unlock. Lock again, tap Emergency pass, confirm the countdown and the ring shrinking, then Relock now.
 - [ ] **Step 5:** Report results with screenshots. Leave all changes uncommitted with a suggested commit message.
+
+---
+
+## Verification results (2026-10-24)
+
+- 19 tests pass (`ColorTokenTests`, `TimeFormatTests`, `LockSessionTests`, `MockLockControllerTests`); no warnings from `Tapout/`.
+- iPhone 17 simulator, iOS 26.5: all three Home states checked in dark and light (`docs/superpowers/verification/phase1-home-states.png`).
+- Tapped through: Scan → lock moment → Locked counting up; Emergency pass → countdown with shrinking ring and pass count 3 → 2; Relock now; orb tap → Unlocked.
+- Lock moment recorded frame by frame (`docs/superpowers/verification/phase1-lock-moment.png`): slate + ready rings + "Hold still", clockwise ring sweep with slate → ember, shockwave, timer scale-in, handoff into Home.
+
+Changes made during verification:
+- `project.yml`: `ASSETCATALOG_COMPILER_APPICON_NAME: ""` until the app icon exists.
+- The overlay double-exposed with Home as it faded. Added `Features/Home/LockMomentLink.swift` (matched-geometry link, off under Reduce Motion) so the orb, timer and "Locked" glide from the overlay into place, and the overlay timer now runs live from the session.
+- Places icon: SF `mappin` replaced by `Components/PinGlyph.swift`, drawn from the spec's SVG path (tab bar and place pill).
+
+Not verifiable in the simulator: haptics, and Reduce Motion behaviour (not toggled during this run).

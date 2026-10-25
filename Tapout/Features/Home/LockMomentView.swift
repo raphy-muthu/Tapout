@@ -5,6 +5,8 @@ import SwiftUI
 /// ~450 ms seal shockwave · 600 ms settled at 0:00.
 struct LockMomentView: View {
     let placeName: String
+    /// The lock that just started; drives the timer once it settles.
+    let session: LockSession
     let onFinished: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -30,7 +32,7 @@ struct LockMomentView: View {
 
     private var placePill: some View {
         HStack(spacing: 6) {
-            Image(systemName: "mappin").font(.system(size: 14, weight: .semibold))
+            PinGlyph(size: 16, lineWidth: 1.8)
             Text(placeName).font(.tSubhead.weight(.semibold))
         }
         .foregroundStyle(Color.ink)
@@ -53,14 +55,20 @@ struct LockMomentView: View {
             OrbView(tone: .ember, ring: ring, size: 280).opacity(frame == 1 ? 0 : 1)
         }
         .frame(width: 280, height: 280)
+        .lockMomentMatch(.orb, inOverlay: true)
     }
 
     private var caption: some View {
         VStack(spacing: Space.xs) {
             if frame == 4 {
                 Group {
-                    TimerText(text: "0:00")
+                    // Live, so the digits match Home's timer when the overlay hands over.
+                    TimelineView(.periodic(from: .now, by: 0.5)) { context in
+                        TimerText(text: TimeFormat.clock(session.elapsed(at: context.date)))
+                    }
+                    .lockMomentMatch(.timer, inOverlay: true)
                     StateLabel(text: "Locked", systemImage: "lock", color: .emberInk)
+                        .lockMomentMatch(.stateWord, inOverlay: true)
                 }
                 .transition(reduceMotion ? .opacity : .scale(scale: 0.94).combined(with: .opacity))
             } else if frame == 1 {
@@ -136,5 +144,5 @@ private struct Shockwave: View {
 }
 
 #Preview {
-    LockMomentView(placeName: MockData.placeName) {}
+    LockMomentView(placeName: MockData.placeName, session: .locked(since: .now)) {}
 }

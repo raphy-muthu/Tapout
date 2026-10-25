@@ -7,6 +7,7 @@ struct RootView: View {
     @State private var showingSettings = false
     @State private var showingLockMoment = false
 
+    @Namespace private var lockMomentNamespace
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(controller: MockLockController = MockLockController()) {
@@ -21,18 +22,24 @@ struct RootView: View {
                     FloatingTabBar(active: $tab)
                 }
             if showingLockMoment {
-                LockMomentView(placeName: MockData.placeName) {
-                    withAnimation(Motion.reveal) { showingLockMoment = false }
+                LockMomentView(placeName: MockData.placeName, session: controller.session) {
+                    withAnimation(reduceMotion ? Motion.reveal : Motion.ui) { showingLockMoment = false }
                 }
                 .transition(.opacity)
                 .zIndex(1)
             }
         }
+        .environment(\.lockMomentLink, reduceMotion ? nil
+            : LockMomentLink(namespace: lockMomentNamespace, overlayShowing: showingLockMoment))
         .background(Color.bg.ignoresSafeArea())
         .environment(\.accent, accent)
         .tint(accent.line)
         .sheet(isPresented: $showingSettings) {
+            #if DEBUG
+            LabView()
+            #else
             PlaceholderView(title: "Settings")
+            #endif
         }
         .task { await runClock() }
     }

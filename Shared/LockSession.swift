@@ -1,12 +1,12 @@
 import Foundation
 
 /// The two accent states from the design system: ember owns locked, slate owns unlocked.
-enum LockState {
+enum LockState: Sendable {
     case locked, unlocked
 }
 
-/// What the phone is doing right now.
-enum LockSession: Equatable {
+/// What the phone is doing right now. Stored in the App Group, so the monitor extension can relock.
+enum LockSession: Equatable, Codable, Sendable {
     case unlocked
     case locked(since: Date)
     /// An emergency pass is open; apps relock at `relockAt`.

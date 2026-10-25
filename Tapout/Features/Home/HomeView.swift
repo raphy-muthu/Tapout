@@ -56,11 +56,14 @@ struct HomeView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("Unlock")
                 .accessibilityHint("Stands in for tapping your tag")
+                .lockMomentMatch(.orb)
 
                 VStack(spacing: Space.xs) {
                     TimerText(text: TimeFormat.clock(elapsed))
                         .accessibilityLabel("Locked for \(TimeFormat.spoken(elapsed))")
+                        .lockMomentMatch(.timer)
                     StateLabel(text: "Locked", systemImage: "lock", color: .emberInk)
+                        .lockMomentMatch(.stateWord)
                 }
             }
             Spacer(minLength: 0)
