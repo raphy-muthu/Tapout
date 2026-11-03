@@ -1481,19 +1481,19 @@ Needs: the iPhone 16 with **Developer Mode** on (Settings → Privacy & Security
 
 Record every result in the table at the end of this plan.
 
-- [ ] **Step 1: Access** — settings button → Lab → "Allow Screen Time access" → approve with Face ID/passcode. Expected: Access "Approved" and App Group "OK". If App Group says "Missing", stop and fix signing first (Task 4 Step 4 and the `codesign` check in Step 5).
-- [ ] **Step 2: Apps** — "Choose apps", pick Photos and Calendar. Expected: both listed with icons; log line "Apps: 2, categories: 0".
-- [ ] **Step 3: Pair** — "Pair a tag", hold sticker A to the top of the phone. Expected: NFC sheet says "Done.", "Tag 1" with its UID. Pair A again. Expected: "That tag is already paired."
-- [ ] **Step 4: Lock** — "Scan", tag A. Expected: two firm taps, State "Locked 0:00" counting up. Open Photos from the Home Screen. Expected: iOS's default Screen Time block screen.
-- [ ] **Step 5: Persistence** — swipe Tapout away in the app switcher, open Photos: still blocked. Restart the phone, open Photos: still blocked.
-- [ ] **Step 6: Unknown tag** — "Scan", the unpaired tag/card. Expected: warning haptic, "Not a paired tag.", still locked, log "Rejected unknown tag …".
-- [ ] **Step 7: Unlock** — "Scan", tag A. Expected: one soft tap, Unlocked, Photos opens.
-- [ ] **Step 8: Relock, `warning` strategy** — Relock via "Warning". Scan tag A to lock, then "Emergency pass". Expected: Passes 4 of 5, Photos opens. Note the relock time in the log, and the `app · Scheduled: …` line under it (what DeviceActivity stored). For a second timing record, open Console.app on the Mac with the phone connected, select the phone, turn on Action → Include Info Messages, filter by subsystem `com.raphymuthu.tapout` and click Start streaming before you lock the phone. **Swipe Tapout away**, lock the phone, wait 6 minutes. Unlock the phone, open Photos. Expected: blocked. Open the Lab: log shows `monitor · intervalWillEndWarning: relocked, Ns after relock time`. Record N. Leave the phone alone 10 more minutes and check for `intervalDidEnd: nothing to relock`.
-- [ ] **Step 9: Relock, `pastStart` strategy** — Reset passes, switch to "Past start", repeat Step 8. Expected either: the pass starts and `intervalDidEnd: relocked, Ns …` appears (record N), or "Couldn't schedule the relock: …" (record the error text; the pass is not spent), or accepted but no monitor callback: the Scheduled line shows `none` or an interval already in the past, and no `monitor` line appears. Record that too.
-- [ ] **Step 10: Repeat the better strategy twice more**, once with Low Power Mode on. Record each N.
-- [ ] **Step 11: Relock now** — lock, emergency pass, "Relock now". Expected: blocked again immediately; no monitor relock line afterwards.
-- [ ] **Step 12: Back-to-back passes** — "Reset passes" first (this step needs two), keep the strategy chosen in Step 10, then lock, emergency pass, "Relock now", then another emergency pass right away. Expected: the monitor relocks only at the second pass's relock time, with no earlier relock line. An early relock means a stale interval from the first pass fired.
-- [ ] **Step 13: Report** — fill in the results table below, pick the strategy for Phase 4 (the one that relocked closest to 0 s, never more than ~60 s late), and write anything surprising under "Findings". Leave all changes uncommitted with the suggested message `Record Phase 2 device spike results`.
+- [x] **Step 1: Access** — settings button → Lab → "Allow Screen Time access" → approve with Face ID/passcode. Expected: Access "Approved" and App Group "OK". If App Group says "Missing", stop and fix signing first (Task 4 Step 4 and the `codesign` check in Step 5).
+- [x] **Step 2: Apps** — "Choose apps", pick Photos and Calendar. Expected: both listed with icons; log line "Apps: 2, categories: 0".
+- [x] **Step 3: Pair** — "Pair a tag", hold sticker A to the top of the phone. Expected: NFC sheet says "Done.", "Tag 1" with its UID. Pair A again. Expected: "That tag is already paired."
+- [x] **Step 4: Lock** — "Scan", tag A. Expected: two firm taps, State "Locked 0:00" counting up. Open Photos from the Home Screen. Expected: iOS's default Screen Time block screen.
+- [x] **Step 5: Persistence** — swipe Tapout away in the app switcher, open Photos: still blocked. Restart the phone, open Photos: still blocked.
+- [x] **Step 6: Unknown tag** — "Scan", the unpaired tag/card. Expected: warning haptic, "Not a paired tag.", still locked, log "Rejected unknown tag …".
+- [x] **Step 7: Unlock** — "Scan", tag A. Expected: one soft tap, Unlocked, Photos opens.
+- [x] **Step 8: Relock, `warning` strategy** — Relock via "Warning". Scan tag A to lock, then "Emergency pass". Expected: Passes 4 of 5, Photos opens. Note the relock time in the log, and the `app · Scheduled: …` line under it (what DeviceActivity stored). For a second timing record, open Console.app on the Mac with the phone connected, select the phone, turn on Action → Include Info Messages, filter by subsystem `com.raphymuthu.tapout` and click Start streaming before you lock the phone. **Swipe Tapout away**, lock the phone, wait 6 minutes. Unlock the phone, open Photos. Expected: blocked. Open the Lab: log shows `monitor · intervalWillEndWarning: relocked, Ns after relock time`. Record N. Leave the phone alone 10 more minutes and check for `intervalDidEnd: nothing to relock`.
+- [x] **Step 9: Relock, `pastStart` strategy** — Reset passes, switch to "Past start", repeat Step 8. Expected either: the pass starts and `intervalDidEnd: relocked, Ns …` appears (record N), or "Couldn't schedule the relock: …" (record the error text; the pass is not spent), or accepted but no monitor callback: the Scheduled line shows `none` or an interval already in the past, and no `monitor` line appears. Record that too.
+- [x] **Step 10: Repeat the better strategy twice more**, once with Low Power Mode on. Record each N.
+- [x] **Step 11: Relock now** — lock, emergency pass, "Relock now". Expected: blocked again immediately; no monitor relock line afterwards.
+- [x] **Step 12: Back-to-back passes** — "Reset passes" first (this step needs two), keep the strategy chosen in Step 10, then lock, emergency pass, "Relock now", then another emergency pass right away. Expected: the monitor relocks only at the second pass's relock time, with no earlier relock line. An early relock means a stale interval from the first pass fired.
+- [x] **Step 13: Report** — fill in the results table below, pick the strategy for Phase 4 (the one that relocked closest to 0 s, never more than ~60 s late), and write anything surprising under "Findings". Leave all changes uncommitted with the suggested message `Record Phase 2 device spike results`.
 
 ## Device results
 
@@ -1501,23 +1501,27 @@ A negative N means the callback fired early, or came from a stale interval. Chec
 
 | Check | Expected | Result |
 | --- | --- | --- |
-| Screen Time access | Approved | |
-| App Group | OK | |
-| Shield on lock | Photos blocked | |
-| Shield after app killed | Still blocked | |
-| Shield after restart | Still blocked | |
-| Unknown tag | Rejected, still locked | |
-| Unlock | Photos opens | |
-| `warning` relock, run 1 | Relocked, N ≈ 0 s | |
-| `pastStart` relock, run 1 | Relocked or schedule error | |
-| Chosen strategy, run 2 | | |
-| Chosen strategy, run 3 (Low Power) | | |
-| Relock now | Blocked immediately | |
-| Back-to-back passes | Monitor relocks only at the second pass's time | |
+| Screen Time access | Approved | Approved |
+| App Group | OK | OK |
+| Shield on lock | Photos blocked | Pass |
+| Shield after app killed | Still blocked | Pass |
+| Shield after restart | Still blocked | Pass |
+| Unknown tag | Rejected, still locked | Pass |
+| Unlock | Photos opens | Pass |
+| `warning` relock, run 1 | Relocked, N ≈ 0 s | **Relocked, N = 1 s.** Scheduled 5:56–6:11 PM. The 15-min backstop `intervalDidEnd: nothing to relock` appeared afterwards, as expected |
+| `pastStart` relock, run 1 | Relocked or schedule error | Worked; N not recorded |
+| Chosen strategy, run 2 | | Worked; N not recorded |
+| Chosen strategy, run 3 (Low Power) | | Worked; N not recorded |
+| Relock now | Blocked immediately | Pass; no monitor relock line afterwards |
+| Back-to-back passes | Monitor relocks only at the second pass's time | Worked; relock times not recorded. A later `Scheduled:` line read `6:04:15 PM – 6:19:15 PM, 1 activities`: only one activity registered, so re-scheduling replaced the earlier interval |
 
-**Chosen strategy for Phase 4:**
+**Chosen strategy for Phase 4:** `warning`. It relocked 1 s after the relock time with Tapout closed and the phone locked, and its 15-minute backstop fired and correctly did nothing. `pastStart` was reported working but without timing, so there is nothing to prefer it on.
 
-**Findings:**
+**Findings:** (run 2026-11-03 on Raphy's iPhone, iPhone 16, iOS 27.0.1, signed with team HM34P4HC4F)
+- Everything in this table worked on the first try, by the owner's report.
+- DeviceActivity kept a single `tapout.emergency` activity after re-scheduling (`1 activities`), which answers the Phase 2 review's stale-interval worry for this device.
+- Xcode's ⌘R failed first with `dyld_shared_cache_extract_dylibs failed` (code 908) because the Mac's disk was full while copying ~10 GB of device symbols. The build was installed with `xcrun devicectl device install app` and launched with `devicectl device process launch` instead.
+- Not recorded: N for `pastStart`, the two repeat runs (including Low Power Mode), and the back-to-back relock times. Worth capturing on the next device session if timing ever looks off.
 
 ## Phase 4 follow-ups (from the Phase 2 review)
 

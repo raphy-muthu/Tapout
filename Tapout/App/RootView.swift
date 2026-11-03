@@ -1,46 +1,58 @@
 import SwiftUI
 
-/// Tabs, the floating tab bar, the lock-moment overlay and the clock that drives auto-relock.
+/// Screens pushed over the tabs. The tab bar belongs to the root, so pushed screens cover it.
+enum Route: Hashable {
+    case settings
+}
+
+/// Tabs, the floating tab bar, navigation, the lock-moment overlay and the clock that drives auto-relock.
 struct RootView: View {
     @State private var controller: MockLockController
+    @State private var model: AppModel
     @State private var tab = AppTab.home
-    @State private var showingSettings = false
+    @State private var path: [Route] = []
     @State private var showingLockMoment = false
+    @AppStorage(AppSettings.appearanceKey) private var appearance = Appearance.system
 
     @Namespace private var lockMomentNamespace
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    init(controller: MockLockController = MockLockController()) {
+    init(controller: MockLockController = MockLockController(), model: AppModel) {
         _controller = State(initialValue: controller)
+        _model = State(initialValue: model)
     }
 
     var body: some View {
         let accent = Accent.for(controller.session.lockState)
-        ZStack {
-            screen
-                .safeAreaInset(edge: .bottom, spacing: Space.md) {
-                    FloatingTabBar(active: $tab)
+        NavigationStack(path: $path) {
+            ZStack {
+                screen
+                    .safeAreaInset(edge: .bottom, spacing: Space.md) {
+                        FloatingTabBar(active: $tab)
+                    }
+                if showingLockMoment {
+                    LockMomentView(placeName: model.defaultPlace?.name ?? MockData.placeName, session: controller.session) {
+                        withAnimation(reduceMotion ? Motion.reveal : Motion.ui) { showingLockMoment = false }
+                    }
+                    .transition(.opacity)
+                    .zIndex(1)
                 }
-            if showingLockMoment {
-                LockMomentView(placeName: MockData.placeName, session: controller.session) {
-                    withAnimation(reduceMotion ? Motion.reveal : Motion.ui) { showingLockMoment = false }
+            }
+            .background(Color.bg.ignoresSafeArea())
+            .toolbar(.hidden, for: .navigationBar)
+            .navigationDestination(for: Route.self) { route in
+                switch route {
+                case .settings:
+                    SettingsView(model: model, passesLeft: controller.passesLeft, onOpenTab: open)
                 }
-                .transition(.opacity)
-                .zIndex(1)
             }
         }
         .environment(\.lockMomentLink, reduceMotion ? nil
             : LockMomentLink(namespace: lockMomentNamespace, overlayShowing: showingLockMoment))
-        .background(Color.bg.ignoresSafeArea())
+        .environment(\.isLocked, controller.session.lockState == .locked)
         .environment(\.accent, accent)
         .tint(accent.line)
-        .sheet(isPresented: $showingSettings) {
-            #if DEBUG
-            LabView()
-            #else
-            PlaceholderView(title: "Settings")
-            #endif
-        }
+        .preferredColorScheme(appearance.colorScheme)
         .task { await runClock() }
     }
 
@@ -48,14 +60,26 @@ struct RootView: View {
     private var screen: some View {
         switch tab {
         case .home:
-            HomeView(controller: controller, onScan: scan, onOpenSettings: { showingSettings = true })
+            HomeView(controller: controller, model: model, onScan: scan, onOpenSettings: openSettings)
         case .modes:
-            PlaceholderView(title: "Modes")
+            ModesView(model: model)
         case .places:
-            PlaceholderView(title: "Places")
+            PlacesView(model: model)
         case .insights:
             PlaceholderView(title: "Insights")
         }
+    }
+
+    /// A quick double tap on the gear would otherwise push Settings twice.
+    private func openSettings() {
+        guard path.isEmpty else { return }
+        path.append(.settings)
+    }
+
+    /// Settings links jump to a tab: pop back to the root, then switch.
+    private func open(_ destination: AppTab) {
+        path.removeAll()
+        tab = destination
     }
 
     /// Phase 1 stand-in for a successful tag read. The overlay appears instantly,

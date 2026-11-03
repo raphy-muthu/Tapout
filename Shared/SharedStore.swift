@@ -75,6 +75,34 @@ final class SharedStore {
         set { write(newValue, .relockStrategy) }
     }
 
+    /// Every mode the owner has made. `AppModel` keeps at least one.
+    var modes: [Mode] {
+        get { read(.modes, absent: [], corrupt: []) }
+        set { write(newValue, .modes) }
+    }
+
+    var activeModeID: UUID? {
+        get { read(.activeModeID, absent: nil, corrupt: nil) }
+        set { write(newValue, .activeModeID) }
+    }
+
+    /// The place Places shows first.
+    var defaultPlace: TagUID? {
+        get { read(.defaultPlace, absent: nil, corrupt: nil) }
+        set { write(newValue, .defaultPlace) }
+    }
+
+    var lockHistory: [LockRecord] {
+        get { read(.lockHistory, absent: [], corrupt: []) }
+        set { write(newValue, .lockHistory) }
+    }
+
+    /// Apps that stay open in every mode.
+    var alwaysAllowed: FamilyActivitySelection {
+        get { read(.alwaysAllowed, absent: FamilyActivitySelection(), corrupt: FamilyActivitySelection()) }
+        set { write(newValue, .alwaysAllowed) }
+    }
+
     var log: [LogEntry] {
         read(.log, absent: [], corrupt: [])
     }
@@ -91,16 +119,20 @@ final class SharedStore {
 
     private enum Key: String {
         case session, selection, pairedTags, passesLeft, relockStrategy, log
+        case modes, activeModeID, defaultPlace, lockHistory, alwaysAllowed
     }
 
     /// `absent` when nothing was ever stored. `corrupt` when data is there but won't decode;
     /// pick the safe side for each value, so damage never refills passes or drops a lock.
+    /// Unreadable data is copied to "<key>.unreadable" (first copy kept) so a later write can't lose it for good.
     private func read<Value: Decodable>(_ key: Key, absent: Value, corrupt: Value) -> Value {
         guard let data = defaults.data(forKey: key.rawValue) else { return absent }
         do {
             return try decoder.decode(Value.self, from: data)
         } catch {
             Self.logger.error("Unreadable \(key.rawValue, privacy: .public): \(error)")
+            let backupKey = "\(key.rawValue).unreadable"
+            if defaults.data(forKey: backupKey) == nil { defaults.set(data, forKey: backupKey) }
             return corrupt
         }
     }

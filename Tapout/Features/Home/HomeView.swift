@@ -3,6 +3,7 @@ import SwiftUI
 /// Home in its three states, matching design/screens/Home.dc.html.
 struct HomeView: View {
     let controller: MockLockController
+    let model: AppModel
     let onScan: () -> Void
     let onOpenSettings: () -> Void
 
@@ -10,7 +11,13 @@ struct HomeView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HomeHeader(modeName: MockData.modeName, isLocked: isLocked, onOpenSettings: onOpenSettings)
+            HomeHeader(
+                modes: model.modes,
+                activeMode: model.activeMode,
+                showsLockGlyph: isLocked,
+                onSelectMode: { model.setActiveMode($0) },
+                onOpenSettings: onOpenSettings
+            )
             TimelineView(.periodic(from: .now, by: 0.5)) { context in
                 switch controller.session {
                 case .unlocked: unlocked
@@ -119,29 +126,31 @@ struct HomeView: View {
 }
 
 #Preview("Unlocked · dark") {
-    RootView().preferredColorScheme(.dark)
+    RootView(model: DemoData.previewModel()).preferredColorScheme(.dark)
 }
 
 #Preview("Locked · dark") {
-    RootView(controller: MockLockController(session: .locked(since: .now - (47 * 60 + 12))))
+    RootView(controller: MockLockController(session: .locked(since: .now - (47 * 60 + 12))), model: DemoData.previewModel())
         .preferredColorScheme(.dark)
 }
 
 #Preview("Emergency · dark") {
-    RootView(controller: MockLockController(session: .emergency(relockAt: .now + 272, duration: 300), passesLeft: 2))
+    RootView(controller: MockLockController(session: .emergency(relockAt: .now + 272, duration: 300), passesLeft: 2),
+             model: DemoData.previewModel())
         .preferredColorScheme(.dark)
 }
 
 #Preview("Unlocked · light") {
-    RootView().preferredColorScheme(.light)
+    RootView(model: DemoData.previewModel()).preferredColorScheme(.light)
 }
 
 #Preview("Locked · light") {
-    RootView(controller: MockLockController(session: .locked(since: .now - (47 * 60 + 12))))
+    RootView(controller: MockLockController(session: .locked(since: .now - (47 * 60 + 12))), model: DemoData.previewModel())
         .preferredColorScheme(.light)
 }
 
 #Preview("Emergency · light") {
-    RootView(controller: MockLockController(session: .emergency(relockAt: .now + 272, duration: 300), passesLeft: 2))
+    RootView(controller: MockLockController(session: .emergency(relockAt: .now + 272, duration: 300), passesLeft: 2),
+             model: DemoData.previewModel())
         .preferredColorScheme(.light)
 }

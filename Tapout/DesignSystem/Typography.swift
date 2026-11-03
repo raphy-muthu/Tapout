@@ -9,6 +9,7 @@ extension Font {
     static let numberSmall = Font.system(size: 17, weight: .medium, design: .rounded).monospacedDigit()
     // Text: SF Pro, Dynamic Type styles
     static let tLargeTitle = Font.largeTitle.weight(.semibold)
+    static let tTitle1 = Font.title.weight(.semibold) // 28/34: card heroes in the screen specs
     static let tTitle = Font.title2.weight(.semibold)
     static let tHeadline = Font.headline
     static let tBody = Font.body

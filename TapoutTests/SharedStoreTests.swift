@@ -74,4 +74,58 @@ struct SharedStoreTests {
         store.clearLog()
         #expect(store.log.isEmpty)
     }
+
+    @Test func newKeysStartEmpty() {
+        let store = SharedStore.makeTest()
+        #expect(store.modes.isEmpty)
+        #expect(store.activeModeID == nil)
+        #expect(store.defaultPlace == nil)
+        #expect(store.lockHistory.isEmpty)
+    }
+
+    @Test func modesPlacesAndHistoryRoundTrip() {
+        let store = SharedStore.makeTest()
+        let kitchen = TagUID(hex: "04A1")
+        let mode = Mode(
+            name: "Deep work",
+            schedule: ModeSchedule(days: ModeSchedule.weekdays, start: 540, end: 1020),
+            unlockPlaces: [kitchen]
+        )
+        store.modes = [mode]
+        store.activeModeID = mode.id
+        store.defaultPlace = kitchen
+        store.lockHistory = [LockRecord(start: Self.start, end: Self.start + 60, placeUID: kitchen, modeID: mode.id)]
+
+        #expect(store.modes == [mode])
+        #expect(store.activeModeID == mode.id)
+        #expect(store.defaultPlace == kitchen)
+        #expect(store.lockHistory == [LockRecord(start: Self.start, end: Self.start + 60, placeUID: kitchen, modeID: mode.id)])
+    }
+
+    @Test func lockIntentionRoundTripsAndIsNilWhenAbsent() throws {
+        let store = SharedStore.makeTest()
+        let modeID = UUID()
+        let withIntention = LockRecord(start: Self.start, end: Self.start + 60, placeUID: nil, modeID: modeID,
+                                       intention: "History essay, first paragraph", intentionDone: true)
+        let without = LockRecord(start: Self.start, end: nil, placeUID: nil, modeID: modeID)
+        store.lockHistory = [withIntention, without]
+        #expect(store.lockHistory == [withIntention, without])
+        #expect(store.lockHistory[1].intention == nil)
+        #expect(store.lockHistory[1].intentionDone == nil)
+
+        // History saved before these fields existed has no keys for them.
+        let json = Data(#"{"start":0,"modeID":"\#(modeID.uuidString)"}"#.utf8)
+        let old = try JSONDecoder().decode(LockRecord.self, from: json)
+        #expect(old.intention == nil)
+        #expect(old.intentionDone == nil)
+    }
+
+    @Test func unreadableDataIsKeptBeforeFallingBack() {
+        let suite = "tapout.tests.\(UUID().uuidString)"
+        let store = SharedStore.makeTest(suite: suite)
+        UserDefaults(suiteName: suite)!.set(Data("not json".utf8), forKey: "modes")
+        #expect(store.modes == [])
+        store.modes = [Mode(name: "Focus")]
+        #expect(UserDefaults(suiteName: suite)!.data(forKey: "modes.unreadable") == Data("not json".utf8))
+    }
 }
