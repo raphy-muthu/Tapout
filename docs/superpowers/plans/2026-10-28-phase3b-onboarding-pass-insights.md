@@ -26,7 +26,7 @@
 - Bundle IDs: app `com.raphymuthu.tapout`, monitor extension `com.raphymuthu.tapout.monitor`. App Group `group.com.raphymuthu.tapout`.
 - Five emergency passes total, ever (`SharedStore.totalPasses`). An emergency pass opens apps for 5 minutes.
 - Colours only through asset-catalog tokens (`Color.bg`, `.surface1`, `.surface2`, `.ink`, `.inkSecondary`, `.inkTertiary`, `.ember`, `.emberInk`, `.emberLine`, `.emberGlow`, `.onEmber`, `.slate`, `.slateInk`, `.slateLine`, `.slateGlow`, `.track`, `.danger`). No raw hex.
-- SF Pro for words, SF Pro Rounded for numbers; `.monospacedDigit()` on anything that ticks.
+- Fraunces for titles and numbers of 20pt and up, through the styles in `Typography.swift`; SF Pro for everything else. Fraunces has no tabular digits: anything in Fraunces that ticks uses `FixedDigitText`.
 - 44pt minimum touch targets. Continuous corners. No borders on cards; light theme cards carry `cardShadow()`.
 - Disabled controls show at 0.45 opacity.
 - Copy: very few words, no guilt or shame, no emoji, no exclamation marks. No miss counters anywhere.
@@ -73,7 +73,7 @@ Device compile check, for tasks that touch FamilyControls UI or Core NFC (builds
 xcodebuild -project Tapout.xcodeproj -scheme Tapout -destination 'generic/platform=iOS' -derivedDataPath build/device CODE_SIGNING_ALLOWED=NO build -quiet
 ```
 
-The suite has 95 tests after Phase 3A (as built; its plan predicted 84).
+The suite has 102 tests after Phase 3A and the Fraunces switch.
 
 ---
 
@@ -401,7 +401,7 @@ In `Tapout/Model/AppModel.swift`:
     }
 ```
 
-- [ ] **Step 4: Run the build/test command** — 95 + 13 = 108 tests pass, no warnings from `Tapout/`, `Shared/`, `TapoutTests/` or `TapoutMonitor/`.
+- [ ] **Step 4: Run the build/test command** — 102 + 13 = 115 tests pass, no warnings from `Tapout/`, `Shared/`, `TapoutTests/` or `TapoutMonitor/`.
 
 - [ ] **Step 5: Leave uncommitted.** Suggested message: `Record locks with intentions and check tags against the active mode`
 
@@ -895,7 +895,7 @@ In `Tapout/Model/AppModel.swift`, add before `private static func cleaned(_:fall
     }
 ```
 
-- [ ] **Step 4: Run the build/test command** — 108 + 19 = 127 tests pass, no warnings.
+- [ ] **Step 4: Run the build/test command** — 115 + 19 = 134 tests pass, no warnings.
 
 - [ ] **Step 5: Leave uncommitted.** Suggested message: `Add honest insights maths, comparisons and milestones`
 
@@ -1240,7 +1240,7 @@ In `Tapout/Features/Home/LockMomentView.swift`:
                     }
 ```
 
-- change `.frame(height: 150, alignment: .top)` on `caption` to `.frame(height: 176, alignment: .top)`.
+- change `.frame(height: 176, alignment: .top)` on `caption` to `.frame(height: 204, alignment: .top)`.
 - change the preview to `LockMomentView(placeName: "Kitchen", session: .locked(since: .now), intention: "Essay outline") {}`.
 
 - [ ] **Step 6: Rewrite Home**
@@ -1461,6 +1461,7 @@ struct RootView: View {
 
     @Namespace private var lockMomentNamespace
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.legibilityWeight) private var legibilityWeight
 
     init(controller: MockLockController = MockLockController(), model: AppModel) {
         _controller = State(initialValue: controller)
@@ -1492,6 +1493,10 @@ struct RootView: View {
                 }
             }
         }
+        // Fraunces styles are read once per render, so rebuild the screens when Bold Text changes.
+        // The id sits on the stack, not on RootView, so controller, model and tab survive; it comes
+        // before the presentations so an open cover or sheet isn't dismissed by the change.
+        .id(legibilityWeight)
         // Presentations sit inside the environment modifiers below, so covers and sheets get the accent,
         // the lock state and the appearance too.
         .fullScreenCover(item: $cover, onDismiss: runAfterCover) { cover in
@@ -1622,7 +1627,7 @@ struct RootView: View {
 
 - [ ] **Step 8: Delete `Tapout/Model/MockData.swift`.** Then `grep -rn "MockData" Tapout TapoutTests` must print nothing.
 
-- [ ] **Step 9: Run the build/test command and the device compile check** — both clean, 127 + 4 = 131 tests pass.
+- [ ] **Step 9: Run the build/test command and the device compile check** — both clean, 134 + 4 = 138 tests pass.
 
 - [ ] **Step 10: Leave uncommitted.** Suggested message: `Scan tags to lock and unlock, reject unknown tags, add lock intention`
 
@@ -1635,7 +1640,7 @@ struct RootView: View {
 - Modify: `Tapout/App/RootView.swift`
 
 **Interfaces:**
-- Consumes: `PassPips(left:total:width:height:)`, `CircleIconButton`, `SharedStore.totalPasses`, `MockLockController.emergencyDuration`, `Font.timerLarge`, Task 3's `Cover`.
+- Consumes: `PassPips(left:total:width:height:)`, `CircleIconButton`, `SharedStore.totalPasses`, `MockLockController.emergencyDuration`, `FixedDigitText(text:face:size:)`, Task 3's `Cover`.
 - Produces: `HoldCountdown` (`duration` 10, `progress`, `isDone`, `secondsLeft`, `label`, `title`, `progress(held:)`); `EmergencyPassView(passesLeft:onUse:)`; `Cover.emergencyPass`.
 
 - [ ] **Step 1: Write the failing tests**
@@ -1764,7 +1769,7 @@ struct EmergencyPassView: View {
     private var pips: some View {
         VStack(spacing: Space.sm) {
             PassPips(left: passesLeft, width: 40, height: 12)
-            (Text("\(passesLeft)").font(.system(size: 15, weight: .semibold, design: .rounded)).foregroundStyle(Color.ink)
+            (Text("\(passesLeft)").font(.system(size: 15, weight: .semibold)).foregroundStyle(Color.ink)
                 + Text(" of \(SharedStore.totalPasses) left. Passes never refill.").foregroundStyle(Color.inkSecondary))
                 .font(.tSubhead)
         }
@@ -1786,8 +1791,7 @@ struct EmergencyPassView: View {
                 .rotationEffect(.degrees(-90))
                 .frame(width: 236, height: 236)
             VStack(spacing: Space.xxs) {
-                Text("\(countdown.secondsLeft)")
-                    .font(.timerLarge)
+                FixedDigitText(text: "\(countdown.secondsLeft)", size: 72)
                     .foregroundStyle(Color.ink)
                 Text(countdown.label)
                     .font(.tFootnote)
@@ -1890,7 +1894,7 @@ enum Cover: Identifiable {
   - In `screen`, change `onEmergencyPass: useEmergencyPass,` to `onEmergencyPass: { cover = .emergencyPass },`.
   - Delete the `useEmergencyPass()` method (the hold screen plays the unlock haptic itself).
 
-- [ ] **Step 5: Run the build/test command** — 131 + 4 = 135 tests pass, no warnings.
+- [ ] **Step 5: Run the build/test command** — 138 + 4 = 142 tests pass, no warnings.
 
 - [ ] **Step 6: Leave uncommitted.** Suggested message: `Add the hold-for-10-seconds emergency pass`
 
@@ -2473,7 +2477,7 @@ struct OnboardingView: View {
 
 - [ ] **Step 7: Show onboarding on first launch.** In `Tapout/App/RootView.swift`:
   - Add after the appearance `@AppStorage`: `@AppStorage(AppSettings.onboardedKey) private var hasOnboarded = false`
-  - Add to the `ZStack` inside the `NavigationStack`, after `.background(Color.bg.ignoresSafeArea())` (inside the stack, so it never competes with the root's `Cover`):
+  - Add to the `ZStack` inside the `NavigationStack`, after `.background(Color.bg.ignoresSafeArea())` (inside the stack, so it never competes with the root's `Cover`). Being inside the stack, it rebuilds if Bold Text is toggled mid-onboarding and restarts at step 1, which is acceptable:
 
 ```swift
             .fullScreenCover(isPresented: Binding(get: { !hasOnboarded }, set: { _ in })) {
@@ -2481,7 +2485,7 @@ struct OnboardingView: View {
             }
 ```
 
-- [ ] **Step 8: Run the build/test command and the device compile check** — both clean, 135 + 5 = 140 tests pass.
+- [ ] **Step 8: Run the build/test command and the device compile check** — both clean, 142 + 5 = 147 tests pass.
 
 - [ ] **Step 9: Leave uncommitted.** Suggested message: `Add onboarding with the focus-time step`
 
@@ -2560,7 +2564,7 @@ struct WeekBars: View {
                 ForEach(days, id: \.start) { day in
                     VStack(spacing: 6) {
                         Text(TimeFormat.short(day.lockedTime))
-                            .font(.system(size: 12, design: .rounded))
+                            .font(.system(size: 12))
                             .foregroundStyle(Color.inkTertiary)
                             .opacity(day.isToday ? 1 : 0)
                         RoundedRectangle(cornerRadius: 10, style: .continuous)
@@ -2588,6 +2592,7 @@ struct WeekBars: View {
 }
 
 /// A value over a caption. `pending` values are progress toward an insight ("3 of 8"), shown quieter.
+/// Word values like "Mornings" stay in `numberMedium` on purpose; don't "fix" them to SF Pro.
 struct InsightTile: View {
     let value: String
     let caption: String
@@ -2639,8 +2644,7 @@ struct InsightsView: View {
                 header(total: total)
                 VStack(alignment: .leading, spacing: Space.xxs) {
                     Text(TimeFormat.short(total))
-                        .font(.system(size: 96, weight: .ultraLight, design: .rounded))
-                        .kerning(-2)
+                        .font(.numberHero)
                         .lineLimit(1)
                         .minimumScaleFactor(0.5)
                         .foregroundStyle(Color.ink)
@@ -2839,7 +2843,7 @@ enum Cover: Identifiable {
 
 - [ ] **Step 4: Check `PlaceholderView` is unused.** `grep -rn "PlaceholderView(" Tapout` should only show its own file; if so, delete `Tapout/Features/Placeholder/PlaceholderView.swift`.
 
-- [ ] **Step 5: Run the build/test command and the device compile check** — both clean, 140 + 1 = 141 tests pass.
+- [ ] **Step 5: Run the build/test command and the device compile check** — both clean, 147 + 1 = 148 tests pass.
 
 - [ ] **Step 6: Leave uncommitted.** Suggested message: `Add Insights and milestones`
 
@@ -2849,13 +2853,13 @@ enum Cover: Identifiable {
 
 Simulator: iPhone 17, iOS 26.5, id `33A5EBE9-5D77-488C-85C0-FDBC419C7ECE`. Points are 402 × 874. Tap points: tab bar Home (73, 807), Modes (158, 807), Places (243, 807), Insights (329, 807); Home's gear (356, 92); Home's mode pill (80, 92); Scan (201, 723); locked orb (201, 319). Hold the pass with a long `tap` (`duration` 11).
 
-- [ ] **Step 1:** Run the build/test command and the device compile check: 141 tests pass, no warnings from `Tapout/`, `Shared/`, `TapoutTests/` or `TapoutMonitor/`.
+- [ ] **Step 1:** Run the build/test command and the device compile check: 148 tests pass, no warnings from `Tapout/`, `Shared/`, `TapoutTests/` or `TapoutMonitor/`.
 - [ ] **Step 2: Onboarding, fresh install.** `xcrun simctl uninstall <id> com.raphymuthu.tapout`, install `build/dd/Build/Products/Debug-iphonesimulator/Tapout.app`, launch with no arguments, dark. Screenshot all five steps. On step 4 pick Afternoons (weekdays stay on); on step 5 pick Sports and Movies, tap "Scan tag", wait for "Tag found", save. Expected: Home, unlocked; Modes shows Focus with schedule "1–5". Repeat with `-resetOnboarding` in light and screenshot steps 1–5.
 - [ ] **Step 3: Lock intention.** On Home type "Essay outline", tap Scan. Expected: the lock moment shows "Essay outline" under "Locked"; locked Home keeps it. Tap the orb: unlock, then "Did you do it?" with the intention. Tap Done. Expected next: the "First lock" milestone (ember orb, rings, "The first of many."). Done. Back on unlocked Home, "Essay outline" is a recent chip; tapping it fills the field.
 - [ ] **Step 4: Emergency pass.** Lock, tap "Emergency pass · 3 left". Screenshot the hold screen (3 ember pips). Long-press 3 s and release: the ring resets to 10. Long-press 11 s: "Pass used", "Apps open", then Home in the emergency state with 2 left. Relock now.
 - [ ] **Step 5: Rejected tag.** Launch with `-demoData -mockUnknownTag`, tap Scan: "That's not one of your tags.", "Try Kitchen or Desk.", "Try again" and "Pair as a new place". Close. Launch with `-demoData -mockUnknownTag -mockState locked`, tap the orb: the same title without "Pair as a new place". Screenshot both, dark and light.
 - [ ] **Step 6: Insights.** Launch with `-demoData -resetMilestones`, open Insights, dark then light. Expected: hero total, an NFL comparison card, today's bar ember and labelled, tiles for locks, longest, Best time "Mornings" and Goals done "2 of 3". Launch with `-skipOnboarding` after `xcrun simctl uninstall` (empty history): tiles show "0 of 8" and "0 of 3" in ink-tertiary and the comparison card is hidden.
-- [ ] **Step 7:** Compare against `Main.dc.html`, `EmergencyPass.dc.html`, `Rejected.dc.html`, `Insights.dc.html` and the spec `docs/superpowers/specs/2026-10-27-phase3b-design.md`: sizes, radii, copy, dark/light colours, disabled opacity, and that no screen counts misses.
+- [ ] **Step 7:** Compare against `Main.dc.html`, `EmergencyPass.dc.html`, `Rejected.dc.html`, `Insights.dc.html` and the spec `docs/superpowers/specs/2026-10-27-phase3b-design.md`: sizes, radii, copy, dark/light colours, disabled opacity, and that no screen counts misses. Fonts follow `Typography.swift`, not the font families in the spec files.
 - [ ] **Step 8:** Report with screenshots saved as contact sheets in `docs/superpowers/verification/phase3b-*.png`. Note what the simulator can't show (haptics, the real app picker, real NFC, Screen Time authorization). Leave all changes uncommitted with the suggested message `Phase 3B verification results`.
 
 ---

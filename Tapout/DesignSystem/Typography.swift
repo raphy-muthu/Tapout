@@ -1,16 +1,19 @@
 import SwiftUI
 
 extension Font {
-    // Numerals: SF Pro Rounded
-    static let timerHero = Font.system(size: 112, weight: .ultraLight, design: .rounded).monospacedDigit()
-    static let timerLarge = Font.system(size: 72, weight: .light, design: .rounded).monospacedDigit()
-    static let numberDisplay = Font.system(size: 48, weight: .light, design: .rounded)
-    static let numberMedium = Font.system(size: 28, weight: .regular, design: .rounded)
-    static let numberSmall = Font.system(size: 17, weight: .medium, design: .rounded).monospacedDigit()
+    // Numbers of 20pt and up: Fraunces. It has no tabular digits, so anything that ticks uses FixedDigitText.
+    // Computed so each read picks the cut for the current Bold Text setting.
+    @MainActor static var numberHero: Font { Font.custom(FrauncesFace.display.resolved().rawValue, fixedSize: 96) }
+    @MainActor static var numberDisplay: Font { Font.custom(FrauncesFace.display.resolved().rawValue, fixedSize: 48) }
+    @MainActor static var numberMedium: Font { Font.custom(FrauncesFace.number.resolved().rawValue, fixedSize: 28) }
+    @MainActor static var numberTile: Font { Font.custom(FrauncesFace.number.resolved().rawValue, fixedSize: 20) }
+    // Small numbers: SF Pro.
+    static let numberSmall = Font.system(size: 17, weight: .medium).monospacedDigit()
+    // Titles: Fraunces, scaling with Dynamic Type.
+    @MainActor static var tLargeTitle: Font { Font.custom(FrauncesFace.title.resolved().rawValue, size: 34, relativeTo: .largeTitle) }
+    @MainActor static var tTitle1: Font { Font.custom(FrauncesFace.title.resolved().rawValue, size: 28, relativeTo: .title) } // card heroes in the screen specs
+    @MainActor static var tTitle: Font { Font.custom(FrauncesFace.title.resolved().rawValue, size: 22, relativeTo: .title2) }
     // Text: SF Pro, Dynamic Type styles
-    static let tLargeTitle = Font.largeTitle.weight(.semibold)
-    static let tTitle1 = Font.title.weight(.semibold) // 28/34: card heroes in the screen specs
-    static let tTitle = Font.title2.weight(.semibold)
     static let tHeadline = Font.headline
     static let tBody = Font.body
     static let tSubhead = Font.subheadline

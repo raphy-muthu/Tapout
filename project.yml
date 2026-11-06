@@ -32,6 +32,13 @@ targets:
           - UIInterfaceOrientationPortrait
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
+        UIAppFonts:
+          - Fraunces-TapoutDisplay.ttf
+          - Fraunces-TapoutNumber.ttf
+          - Fraunces-TapoutTitle.ttf
+          - Fraunces-TapoutDisplayBold.ttf
+          - Fraunces-TapoutNumberBold.ttf
+          - Fraunces-TapoutTitleBold.ttf
         NFCReaderUsageDescription: Tapout reads your tag to lock and unlock your apps.
         # Core NFC drops ISO 7816 tags without this list. This AID is the standard NDEF
         # application; Tapout only reads the tag's UID.

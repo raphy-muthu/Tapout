@@ -9,7 +9,7 @@ Every screen from the "Tapout App Screens" canvas, mapped to its source file in 
 - `{{t.bg}}`, `{{t.ink}}` etc. are design-system colour tokens. The palette in each file's `<script>` block maps them to hex values that match `design-system/tokens.json`. In SwiftUI, use the asset-catalog colour of the same token name, never the raw hex.
 - `<dc-import name="Orb" …>` = use the shared `OrbView`. `<dc-import name="TabBar" …>` = use the shared tab bar.
 - Text in square brackets, like `[3h 12m]`, is a placeholder for real data.
-- Fonts in the files fall back to Inter/Nunito for the browser. In the app, use SF Pro and SF Pro Rounded as `design-system/README.md` says.
+- Fonts follow `Tapout/DesignSystem/Typography.swift` (Fraunces for titles and numbers of 20pt and up, SF Pro for the rest). The font families named inside the screen files are stale; take layout, sizes, copy and colours from them.
 - Ignore `support.js`, `<helmet>`, `<x-dc>` and `data-props`. They belong to the design tool.
 - `canvas.json` lists all 60 artboards with titles, in case you need the full picture.
 
@@ -50,4 +50,5 @@ The screens came later and are the newer decision. **When they conflict, follow 
 - **Naming:** the README calls the tag "Buddy". The screens call paired tags **places** ("Kitchen", "Desk") and keep "Buddy" for the optional character concept.
 - **Shield copy:** the README says "Locked / Tap Buddy to open / Close". The screen says **"Sealed / Tap a tag to open this app."** with no button. iOS may still require a button; check ManagedSettingsUI.
 - **Emergency exit:** the README puts it in settings. The locked Home screen shows a quiet "Emergency pass · [3] left" link. The owner may remove this link; ask before shipping it.
+- **Fonts:** the README says SF Pro and SF Pro Rounded, and the screen files name Inter/Nunito. The app follows `Tapout/DesignSystem/Typography.swift`: Fraunces for titles and numbers of 20pt and up, SF Pro for the rest.
 - **Mascots:** the README says no mascots. Buddy concepts are a deliberate, still-undecided exception.

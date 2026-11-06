@@ -27,10 +27,11 @@ struct ActiveModeCard: View {
                 OrbView(tone: isLocked ? .ember : .slate, ring: isLocked ? 1 : 0, size: 104)
             }
             HStack(spacing: Space.xs) {
-                StatTile(value: mode.schedule.map(ScheduleFormat.short) ?? "Manual", caption: "Schedule", rounded: mode.schedule != nil)
-                StatTile(value: ModeText.unlockSummary(unlockNames), caption: "Unlocks at", rounded: false)
-                StatTile(value: TimeFormat.short(lockedThisWeek), caption: "This week", rounded: true)
+                StatTile(value: mode.schedule.map(ScheduleFormat.short) ?? "Manual", caption: "Schedule", isNumber: mode.schedule != nil)
+                StatTile(value: ModeText.unlockSummary(unlockNames), caption: "Unlocks at", isNumber: false)
+                StatTile(value: TimeFormat.short(lockedThisWeek), caption: "This week", isNumber: true)
             }
+            .fixedSize(horizontal: false, vertical: true) // tiles share a height: Fraunces numbers are taller than SF Pro words
         }
         .card(radius: Radius.sheet)
     }
@@ -40,19 +41,20 @@ struct ActiveModeCard: View {
 struct StatTile: View {
     let value: String
     let caption: String
-    /// Numbers use SF Pro Rounded; words use SF Pro.
-    let rounded: Bool
+    /// Numbers use Fraunces; words use SF Pro.
+    let isNumber: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(value)
-                .font(rounded ? .system(size: 20, design: .rounded) : .tHeadline)
+                .font(isNumber ? .numberTile : .tHeadline)
                 .foregroundStyle(Color.ink)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
+            Spacer(minLength: 0) // captions bottom-align across tiles whose values differ in height
             Text(caption).font(.caption).foregroundStyle(Color.inkTertiary)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(Space.sm)
         .background(Color.surface2, in: RoundedRectangle(cornerRadius: Radius.inner, style: .continuous))
         .accessibilityElement(children: .combine)

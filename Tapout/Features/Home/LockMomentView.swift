@@ -77,7 +77,7 @@ struct LockMomentView: View {
                     .foregroundStyle(Color.ink)
             }
         }
-        .frame(height: 150, alignment: .top)
+        .frame(height: 176, alignment: .top)
     }
 
     private func play() async {

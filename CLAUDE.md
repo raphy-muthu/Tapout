@@ -13,7 +13,7 @@ Tapout is an iPhone app (SwiftUI). You tap a paired NFC tag to lock distracting 
 
 - Use token names, not raw hex. Every colour is an asset-catalog colour set named after its token, with light and dark appearances.
 - Dark-first, but every screen must work in light mode.
-- SF Pro for text, SF Pro Rounded (`design: .rounded`) for numbers. `.monospacedDigit()` on anything that ticks.
+- Fraunces for titles and numbers of 20pt and up, through the styles in `Typography.swift`. SF Pro for all other text and small numbers. Fraunces has no tabular digits: anything in Fraunces that ticks uses `FixedDigitText`; SF Pro numbers that tick use `.monospacedDigit()`. Fraunces styles pick a heavier cut when Bold Text is on; don't use `.bold()` or `.weight()` on them, it does nothing.
 - 44pt minimum touch targets. Continuous corners. No borders on cards.
 - Lock = two rigid haptic taps 90 ms apart. Unlock = one soft tap. Respect Reduce Motion (crossfades instead of springs).
 - Very few words on screen. No guilt or shame copy, no emoji.

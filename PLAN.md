@@ -60,8 +60,12 @@ Replace mocks with Core NFC, ManagedSettings shields, ShieldConfiguration ("Seal
 **Phase 5: system surfaces (handoff step 6)**
 Live Activity + Dynamic Island, small/medium widgets, weekly recap image export and share.
 
+- Live Activity and widget timers use SF Pro with `.monospacedDigit()`: `Text(timerInterval:)` can't use Fraunces' fixed digit slots. Widgets that show titles or static numbers need the Fraunces files added to their target, and `OFL.txt` with them.
+
 **Phase 6: hardening and launch**
 Crash reporting, privacy policy, App Store listing, TestFlight beta, review submission.
+
+- Show the full OFL text and copyright for Fraunces (SIL OFL 1.1) in the app's licenses screen, not only a credit: a file inside an `.ipa` isn't easily viewed. `OFL.txt` already ships in the bundle.
 
 **Later (not in v1):** Buddy character (concept not chosen yet), 3D-printed Buddy enclosure.
 
@@ -124,4 +128,3 @@ Prices are approximate as of late 2026; check before paying.
 - **Auth provider**: no login.
 - **Push notification server**: Live Activity timer and schedules run on-device.
 - **OpenAI or other AI APIs**: nothing in the designs uses them.
-- **Custom fonts**: SF Pro and SF Pro Rounded ship with iOS.

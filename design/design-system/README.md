@@ -86,6 +86,8 @@ Non‑text strokes (`ember-line`, `slate-line`) are at least 3.3:1 against every
 
 ## 4. Typography
 
+> **Updated 2026-11-05: Fraunces replaces SF Pro Rounded.** Titles and numbers of 20pt and up use Fraunces; everything smaller uses SF Pro. This overrides the families and the Swift below, and the matching `tokens.json` usage notes. Sizes and roles are unchanged. `Tapout/DesignSystem/Typography.swift` is the source of truth, and `docs/superpowers/plans/2026-11-05-fraunces-typography.md` explains why.
+
 Two families, both system:
 
 - **SF Pro Rounded** (`rounded`) — every number and timer. Large, light weight, always `.monospacedDigit()` when the value changes so digits don't jitter.

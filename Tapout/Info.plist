@@ -22,6 +22,15 @@
 	<string>1</string>
 	<key>NFCReaderUsageDescription</key>
 	<string>Tapout reads your tag to lock and unlock your apps.</string>
+	<key>UIAppFonts</key>
+	<array>
+		<string>Fraunces-TapoutDisplay.ttf</string>
+		<string>Fraunces-TapoutNumber.ttf</string>
+		<string>Fraunces-TapoutTitle.ttf</string>
+		<string>Fraunces-TapoutDisplayBold.ttf</string>
+		<string>Fraunces-TapoutNumberBold.ttf</string>
+		<string>Fraunces-TapoutTitleBold.ttf</string>
+	</array>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

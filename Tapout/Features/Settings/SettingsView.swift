@@ -69,7 +69,7 @@ struct SettingsView: View {
             HStack(alignment: .firstTextBaseline, spacing: 0) {
                 Text("\(passesLeft)").font(.numberMedium).foregroundStyle(Color.ink)
                 Text("/\(SharedStore.totalPasses)")
-                    .font(.system(size: 17, design: .rounded))
+                    .font(.system(size: 17))
                     .foregroundStyle(Color.inkTertiary)
             }
             .accessibilityHidden(true)

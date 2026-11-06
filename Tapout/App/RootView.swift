@@ -16,6 +16,7 @@ struct RootView: View {
 
     @Namespace private var lockMomentNamespace
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.legibilityWeight) private var legibilityWeight
 
     init(controller: MockLockController = MockLockController(), model: AppModel) {
         _controller = State(initialValue: controller)
@@ -47,6 +48,9 @@ struct RootView: View {
                 }
             }
         }
+        // Fraunces styles are read once per render, so rebuild the screens when Bold Text changes.
+        // The id sits on the stack, not on RootView, so controller, model and tab survive.
+        .id(legibilityWeight)
         .environment(\.lockMomentLink, reduceMotion ? nil
             : LockMomentLink(namespace: lockMomentNamespace, overlayShowing: showingLockMoment))
         .environment(\.isLocked, controller.session.lockState == .locked)
