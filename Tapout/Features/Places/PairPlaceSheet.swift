@@ -99,10 +99,13 @@ struct PairPlaceSheet: View {
     private var actions: some View {
         switch phase {
         case .scanning:
-            Button("Cancel") { dismiss() }
-                .font(.tBody)
-                .foregroundStyle(Color.inkSecondary)
-                .frame(minHeight: 44)
+            Button { dismiss() } label: {
+                Text("Cancel")
+                    .font(.tBody)
+                    .foregroundStyle(Color.inkSecondary)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .contentShape(Rectangle())
+            }
         case .found(let uid):
             PrimaryButton(title: "Save place") { save(uid) }
                 .disabled(trimmedName.isEmpty)

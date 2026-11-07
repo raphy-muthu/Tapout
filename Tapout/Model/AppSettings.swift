@@ -29,6 +29,8 @@ enum AppSettings {
     /// Stored only; the Live Activity arrives in Phase 5.
     static let liveActivityKey = "settings.liveActivity"
     static let appearanceKey = "settings.appearance"
+    /// Set once onboarding is finished or skipped.
+    static let onboardedKey = "settings.onboarded"
 
     /// On unless the owner turned it off.
     static func hapticsEnabled(in defaults: UserDefaults = .standard) -> Bool {

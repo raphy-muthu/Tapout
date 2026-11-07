@@ -61,19 +61,25 @@ struct ModeEditor: View {
 
     private var header: some View {
         HStack {
-            Button("Cancel") { dismiss() }
-                .font(.tBody)
-                .foregroundStyle(Color.inkSecondary)
-                .frame(minHeight: 44)
+            Button { dismiss() } label: {
+                Text("Cancel")
+                    .font(.tBody)
+                    .foregroundStyle(Color.inkSecondary)
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
+            }
             Spacer()
             OrbView(tone: .slate, size: 44)
             Spacer()
-            Button("Save", action: save)
-                .font(.tHeadline)
-                .foregroundStyle(Color.ink)
-                .frame(minHeight: 44)
-                .disabled(!canSave)
-                .opacity(canSave ? 1 : 0.45)
+            Button(action: save) {
+                Text("Save")
+                    .font(.tHeadline)
+                    .foregroundStyle(Color.ink)
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
+            }
+            .disabled(!canSave)
+            .opacity(canSave ? 1 : 0.45)
         }
     }
 
@@ -99,6 +105,7 @@ struct ModeEditor: View {
                         .font(.tSubhead)
                         .foregroundStyle(Color.inkSecondary)
                         .frame(minHeight: 44)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
@@ -134,14 +141,7 @@ struct ModeEditor: View {
                 }
             }
             .frame(minHeight: 44)
-            HStack(spacing: 6) {
-                ForEach(ModeSchedule.displayOrder, id: \.self) { day in
-                    ChoiceChip(title: Calendar.current.veryShortWeekdaySymbols[day - 1], isOn: days.contains(day), fillsWidth: true) {
-                        if days.contains(day) { days.remove(day) } else { days.insert(day) }
-                    }
-                    .accessibilityLabel(Calendar.current.weekdaySymbols[day - 1])
-                }
-            }
+            DayChips(days: $days)
             Text(whenFootnote)
                 .font(.tFootnote)
                 .foregroundStyle(Color.inkTertiary)
@@ -187,13 +187,16 @@ struct ModeEditor: View {
     }
 
     private var deleteButton: some View {
-        Button("Delete mode", role: .destructive) { confirmingDelete = true }
-            .font(.tBody)
-            .foregroundStyle(Color.danger)
-            .frame(maxWidth: .infinity, minHeight: 44)
-            .disabled(model.modes.count <= 1)
-            .opacity(model.modes.count <= 1 ? 0.45 : 1)
-            .padding(.top, Space.md)
+        Button(role: .destructive) { confirmingDelete = true } label: {
+            Text("Delete mode")
+                .font(.tBody)
+                .foregroundStyle(Color.danger)
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .contentShape(Rectangle())
+        }
+        .disabled(model.modes.count <= 1)
+        .opacity(model.modes.count <= 1 ? 0.45 : 1)
+        .padding(.top, Space.md)
     }
 
     /// The saved name, so a blanked draft name doesn't read "Delete ?".

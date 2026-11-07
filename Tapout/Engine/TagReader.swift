@@ -70,7 +70,7 @@ final class TagReader: NSObject, NFCTagReaderSessionDelegate, @unchecked Sendabl
                 finish(.failure(.unsupportedTag))
                 return
             }
-            session.alertMessage = "Done."
+            session.alertMessage = "Tag read."
             session.invalidate()
             finish(.success(TagUID(data: uid)))
         }

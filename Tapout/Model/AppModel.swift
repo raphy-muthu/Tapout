@@ -21,6 +21,9 @@ final class AppModel {
     private(set) var defaultPlaceID: TagUID?
     private(set) var history: [LockRecord] = []
     private(set) var alwaysAllowed = FamilyActivitySelection()
+    private(set) var currentIntention: String?
+    private(set) var interests: [Interest] = []
+    private(set) var seenMilestones: Set<String> = []
 
     @ObservationIgnored private let store: SharedStore
     @ObservationIgnored private let now: () -> Date
@@ -56,6 +59,9 @@ final class AppModel {
         defaultPlaceID = store.defaultPlace
         history = store.lockHistory
         alwaysAllowed = store.alwaysAllowed
+        currentIntention = store.currentIntention
+        interests = store.interests
+        seenMilestones = Set(store.seenMilestones)
     }
 
     // MARK: Modes
@@ -180,6 +186,128 @@ final class AppModel {
 
     func updateAlwaysAllowed(_ selection: FamilyActivitySelection) {
         store.alwaysAllowed = selection
+        reload()
+    }
+
+    // MARK: Locks
+
+    enum TagCheck: Equatable {
+        /// A paired tag that may lock now, or unlock the active mode.
+        case accepted(PairedTag)
+        case unknown
+        /// Paired, but the active mode only unlocks at other places.
+        case wrongPlace(PairedTag)
+    }
+
+    /// The longest intention kept: enough for "History essay, first paragraph".
+    static let intentionLimit = 40
+
+    /// Whether `uid` may lock (while unlocked) or unlock the active mode (while locked).
+    func check(_ uid: TagUID, unlocking: Bool) -> TagCheck {
+        guard let place = places.first(where: { $0.uid == uid }) else { return .unknown }
+        let allowed = activeMode.unlockPlaces
+        if unlocking, !allowed.isEmpty, !allowed.contains(uid) { return .wrongPlace(place) }
+        return .accepted(place)
+    }
+
+    /// The places that can unlock the active mode, in pairing order. Every place when the mode doesn't say.
+    var unlockPlacesForActiveMode: [PairedTag] {
+        let allowed = activeMode.unlockPlaces
+        return allowed.isEmpty ? places : places.filter { allowed.contains($0.uid) }
+    }
+
+    /// Drops locks left open by a crash: nobody knows how long they really ran, so they don't count.
+    /// Lock state isn't persisted yet, so an open record at launch can only be a stale one.
+    func discardInterruptedLocks() {
+        guard store.lockHistory.contains(where: { $0.end == nil }) || store.currentIntention != nil else { return }
+        store.lockHistory.removeAll { $0.end == nil }
+        store.currentIntention = nil
+        reload()
+    }
+
+    /// Records the start of a lock with the active mode. A blank intention counts as none.
+    func startLock(placeUID: TagUID?, intention: String?) {
+        discardInterruptedLocks()
+        let trimmed = intention?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let intention = trimmed.isEmpty ? nil : String(trimmed.prefix(Self.intentionLimit))
+        var all = store.lockHistory
+        all.append(LockRecord(start: now(), end: nil, placeUID: placeUID, modeID: activeMode.id, intention: intention))
+        store.lockHistory = all
+        store.currentIntention = intention
+        reload()
+    }
+
+    /// Ends the running lock and returns it, or nil when none was running.
+    @discardableResult
+    func finishLock() -> LockRecord? {
+        var all = store.lockHistory
+        guard let index = all.lastIndex(where: { $0.end == nil }) else {
+            if store.currentIntention != nil {
+                store.currentIntention = nil
+                reload()
+            }
+            return nil
+        }
+        all[index].end = now()
+        store.lockHistory = all
+        store.currentIntention = nil
+        reload()
+        return all[index]
+    }
+
+    /// Saves the answer to "Did you do it?" for the lock that started at `start`.
+    func answerIntention(forLockStartedAt start: Date, done: Bool) {
+        store.lockHistory = store.lockHistory.map { record in
+            var record = record
+            if record.start == start, record.intention != nil { record.intentionDone = done }
+            return record
+        }
+        reload()
+    }
+
+    /// Up to three recent intentions, newest first, without repeats.
+    var recentIntentions: [String] {
+        var seen = Set<String>()
+        return Array(history.reversed().compactMap(\.intention).filter { seen.insert($0).inserted }.prefix(3))
+    }
+
+    // MARK: Onboarding
+
+    /// Saves onboarding's answers: the active (starter) mode gets the apps and schedule.
+    func completeOnboarding(
+        selection: FamilyActivitySelection,
+        alwaysAllowed: FamilyActivitySelection,
+        schedule: ModeSchedule?,
+        interests: [Interest]
+    ) {
+        var mode = activeMode
+        mode.selection = selection
+        mode.schedule = schedule
+        save(mode)
+        store.alwaysAllowed = alwaysAllowed
+        store.interests = interests
+        reload()
+    }
+
+    // MARK: Insights
+
+    /// Locked time since midnight, for Home's "phone-free today".
+    func phoneFreeToday(calendar: Calendar = .current) -> TimeInterval {
+        guard let today = calendar.dateInterval(of: .day, for: now()) else { return 0 }
+        return Insights.lockedTime(in: today, history: history, now: now())
+    }
+
+    var totalLocked: TimeInterval {
+        Insights.totalLocked(history: history, now: now())
+    }
+
+    /// The first milestone reached that hasn't been shown yet.
+    func unseenMilestone(calendar: Calendar = .current) -> Milestone? {
+        Milestone.reached(in: history, now: now(), calendar: calendar).first { !seenMilestones.contains($0.rawValue) }
+    }
+
+    func markSeen(_ milestone: Milestone) {
+        store.seenMilestones = seenMilestones.union([milestone.rawValue]).sorted()
         reload()
     }
 

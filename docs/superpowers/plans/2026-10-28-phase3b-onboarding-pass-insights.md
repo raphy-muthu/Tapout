@@ -401,7 +401,7 @@ In `Tapout/Model/AppModel.swift`:
     }
 ```
 
-- [ ] **Step 4: Run the build/test command** — 102 + 13 = 115 tests pass, no warnings from `Tapout/`, `Shared/`, `TapoutTests/` or `TapoutMonitor/`.
+- [ ] **Step 4: Run the build/test command** — 102 + 16 = 118 tests pass, no warnings from `Tapout/`, `Shared/`, `TapoutTests/` or `TapoutMonitor/`.
 
 - [ ] **Step 5: Leave uncommitted.** Suggested message: `Record locks with intentions and check tags against the active mode`
 
@@ -496,7 +496,7 @@ struct InsightsTests {
             LockRecord(start: oct(28, 9), end: nil, placeUID: nil, modeID: TestDates.modeID),
         ]
         #expect(Insights.lockCount(weekOf: oct(28, 10), history: history, calendar: calendar) == 2)
-        #expect(Insights.longest(weekOf: oct(28, 10), history: history, calendar: calendar) == 90 * 60)
+        #expect(Insights.longest(weekOf: oct(28, 10), history: history, calendar: calendar) == TimeInterval(90 * 60))
     }
 
     @Test func longestIsNilBeforeTheFirstLock() {
@@ -895,7 +895,7 @@ In `Tapout/Model/AppModel.swift`, add before `private static func cleaned(_:fall
     }
 ```
 
-- [ ] **Step 4: Run the build/test command** — 115 + 19 = 134 tests pass, no warnings.
+- [ ] **Step 4: Run the build/test command** — 118 + 19 = 137 tests pass, no warnings.
 
 - [ ] **Step 5: Leave uncommitted.** Suggested message: `Add honest insights maths, comparisons and milestones`
 
@@ -1457,6 +1457,7 @@ struct RootView: View {
     @State private var afterCover: AfterCover?
     @State private var pairing = false
     @State private var scanning = false
+    @State private var keyboardUp = false
     @AppStorage(AppSettings.appearanceKey) private var appearance = Appearance.system
 
     @Namespace private var lockMomentNamespace
@@ -1474,7 +1475,8 @@ struct RootView: View {
             ZStack {
                 screen
                     .safeAreaInset(edge: .bottom, spacing: Space.md) {
-                        FloatingTabBar(active: $tab)
+                        // Tucked away while typing, so the intention field and Scan fit above the keyboard on small iPhones.
+                        if !keyboardUp { FloatingTabBar(active: $tab) }
                     }
                 if showingLockMoment {
                     LockMomentView(placeName: lockPlaceName, session: controller.session, intention: model.currentIntention) {
@@ -1519,7 +1521,17 @@ struct RootView: View {
         .environment(\.accent, accent)
         .tint(accent.line)
         .preferredColorScheme(appearance.colorScheme)
-        .task { await runClock() }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+            withAnimation(reduceMotion ? Motion.reveal : Motion.ui) { keyboardUp = true }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            withAnimation(reduceMotion ? Motion.reveal : Motion.ui) { keyboardUp = false }
+        }
+        .task {
+            // Lock state isn't persisted yet, so a lock left open by a crash can't still be running.
+            if controller.session == .unlocked { model.discardInterruptedLocks() }
+            await runClock()
+        }
     }
 
     @ViewBuilder
@@ -1627,7 +1639,7 @@ struct RootView: View {
 
 - [ ] **Step 8: Delete `Tapout/Model/MockData.swift`.** Then `grep -rn "MockData" Tapout TapoutTests` must print nothing.
 
-- [ ] **Step 9: Run the build/test command and the device compile check** — both clean, 134 + 4 = 138 tests pass.
+- [ ] **Step 9: Run the build/test command and the device compile check** — both clean, 137 + 4 = 141 tests pass.
 
 - [ ] **Step 10: Leave uncommitted.** Suggested message: `Scan tags to lock and unlock, reject unknown tags, add lock intention`
 
@@ -1894,9 +1906,13 @@ enum Cover: Identifiable {
   - In `screen`, change `onEmergencyPass: useEmergencyPass,` to `onEmergencyPass: { cover = .emergencyPass },`.
   - Delete the `useEmergencyPass()` method (the hold screen plays the unlock haptic itself).
 
-- [ ] **Step 5: Run the build/test command** — 138 + 4 = 142 tests pass, no warnings.
+- [ ] **Step 5: Run the build/test command** — 141 + 6 = 147 tests pass, no warnings.
 
 - [ ] **Step 6: Leave uncommitted.** Suggested message: `Add the hold-for-10-seconds emergency pass`
+
+---
+
+> **Task 4 as built differs from the code above** after review: the hold uses `@GestureState` and stops when the app leaves `.active`, progress accumulates through `HoldCountdown.advance(by:)` with a capped step, `onUse` returns whether a pass was spent, and the screen snapshots the pass count when it opens. The source files are the truth.
 
 ---
 
@@ -2485,11 +2501,13 @@ struct OnboardingView: View {
             }
 ```
 
-- [ ] **Step 8: Run the build/test command and the device compile check** — both clean, 142 + 5 = 147 tests pass.
+- [ ] **Step 8: Run the build/test command and the device compile check** — both clean, 147 + 5 = 152 tests pass.
 
 - [ ] **Step 9: Leave uncommitted.** Suggested message: `Add onboarding with the focus-time step`
 
 ---
+
+> **Task 5 as built differs from the code below:** after a Screen Time denial, step 2 also shows "Open Settings" (the copy reads "Screen Time is off. Turn it on in Settings, then tap Allow."); Allow ignores taps during the request; the app tiles are `Color.clear.aspectRatio(1, contentMode: .fit)` with the content in an overlay, because the "+" tile collapsed otherwise; the count says "1 app". `-mockScreenTimeDenied` shows the denial in the simulator.
 
 ### Task 6: Insights tab and milestones
 
@@ -2843,17 +2861,30 @@ enum Cover: Identifiable {
 
 - [ ] **Step 4: Check `PlaceholderView` is unused.** `grep -rn "PlaceholderView(" Tapout` should only show its own file; if so, delete `Tapout/Features/Placeholder/PlaceholderView.swift`.
 
-- [ ] **Step 5: Run the build/test command and the device compile check** — both clean, 147 + 1 = 148 tests pass.
+- [ ] **Step 5: Run the build/test command and the device compile check** — both clean, 152 + 1 = 153 tests pass.
 
 - [ ] **Step 6: Leave uncommitted.** Suggested message: `Add Insights and milestones`
 
 ---
 
+> **Task 6 as built differs from the code above:** Longest with no finished lock shows "0 of 1" / "lock to longest"; the comparison line uses `tTitle`; today's bar label stays on one line; `showMilestone()` also guards on no cover and unlocked, the sheet's `onDismiss` skips it mid-scan, and `AfterCover.milestone` shows milestones reached together one after another; Share hides at zero; VoiceOver speaks durations and skips empty days. The hero stays plain `Text` in `numberHero`: it moves at most once a minute, and `FixedDigitText`'s slots split "13h" into "1 3h".
+
+> **As built, after the final review:**
+> - Passes start at `SharedStore.totalPasses` and never refill. The app's controller reads `store.passesLeft` and writes back each pass spent; with no store (previews, tests) they last as long as the object. `DemoData.seed` sets 3, and the app now builds the model before the controller so the controller sees that value. `-mockState locked` reads the store; `-mockState emergency` always shows 2 and leaves the store alone. So step 4 below reads 5, then 4, on a fresh install, and 3, then 2, with `-demoData`.
+> - `ScreenTimeAccess.request()` returns `.granted`, `.declined`, `.noConnection` or `.unavailable`, each with its own line; only `.declined` shows Open Settings. `-mockScreenTimeDenied` maps to `.declined`. Step 2 still has no skip (the owner's decision).
+> - The emergency pass button does nothing during a scan. While unlocked, the rejected hint names the first two of all places; while locked, the first two of the mode's unlock places.
+> - The onboarding cover moved below `.id(legibilityWeight)`, on its own `Color.clear` host, so Bold Text can't reset the draft. Its Fraunces titles may keep the old cut until the next step, like the other covers; not checked on screen.
+> - The singular milestone line is now "About as long as a feature film." The plural form is unchanged.
+> - Text buttons keep their 44pt frame and `contentShape` inside the label: Not now, Open Settings, Pair as a new place, + Add, the editor's Cancel, Save, app count and Delete mode, and Developer Lab.
+> - `StepDots` uses `Motion.reveal` under Reduce Motion. Onboarding steps 1, 2, 4 and 5 scroll once they don't fit (`ScrollsWhenTall`), and the intention sheet has a `.large` detent. The NFC sheet says "Tag read." instead of "Done.", since a rejected tag shows it too.
+> - Home's previews use a scratch `defaultAppStorage` with the onboarded flag set, and every onboarding step has dark and light previews.
+> - Tests: 170 (17 new), including the pass, store and Screen Time mappings, the record across a pass and relock, the 50 and 100 hour milestones, Best time's 2/2/2/2 gate and 28-day window, and `TimeBlock` boundaries.
+
 ### Task 7: Verify in the simulator
 
 Simulator: iPhone 17, iOS 26.5, id `33A5EBE9-5D77-488C-85C0-FDBC419C7ECE`. Points are 402 × 874. Tap points: tab bar Home (73, 807), Modes (158, 807), Places (243, 807), Insights (329, 807); Home's gear (356, 92); Home's mode pill (80, 92); Scan (201, 723); locked orb (201, 319). Hold the pass with a long `tap` (`duration` 11).
 
-- [ ] **Step 1:** Run the build/test command and the device compile check: 148 tests pass, no warnings from `Tapout/`, `Shared/`, `TapoutTests/` or `TapoutMonitor/`.
+- [ ] **Step 1:** Run the build/test command and the device compile check: 170 tests pass, no warnings from `Tapout/`, `Shared/`, `TapoutTests/` or `TapoutMonitor/`.
 - [ ] **Step 2: Onboarding, fresh install.** `xcrun simctl uninstall <id> com.raphymuthu.tapout`, install `build/dd/Build/Products/Debug-iphonesimulator/Tapout.app`, launch with no arguments, dark. Screenshot all five steps. On step 4 pick Afternoons (weekdays stay on); on step 5 pick Sports and Movies, tap "Scan tag", wait for "Tag found", save. Expected: Home, unlocked; Modes shows Focus with schedule "1–5". Repeat with `-resetOnboarding` in light and screenshot steps 1–5.
 - [ ] **Step 3: Lock intention.** On Home type "Essay outline", tap Scan. Expected: the lock moment shows "Essay outline" under "Locked"; locked Home keeps it. Tap the orb: unlock, then "Did you do it?" with the intention. Tap Done. Expected next: the "First lock" milestone (ember orb, rings, "The first of many."). Done. Back on unlocked Home, "Essay outline" is a recent chip; tapping it fills the field.
 - [ ] **Step 4: Emergency pass.** Lock, tap "Emergency pass · 3 left". Screenshot the hold screen (3 ember pips). Long-press 3 s and release: the ring resets to 10. Long-press 11 s: "Pass used", "Apps open", then Home in the emergency state with 2 left. Relock now.
@@ -2866,8 +2897,14 @@ Simulator: iPhone 17, iOS 26.5, id `33A5EBE9-5D77-488C-85C0-FDBC419C7ECE`. Point
 
 ## Phase 4 notes (from this plan)
 
+- `RootView` calls `AppModel.discardInterruptedLocks()` at launch only because mock lock state isn't persisted. Once `LockEngine` persists the session, an open record can be a real running lock, so remove that call.
 - `LockEngine` takes over lock recording: `startLock` / `finishLock` move into `handleTag`, the intention draft passes through, and scheduled unlocks also finish the record and ask "Did you do it?" the next time Tapout opens.
 - `RootView.scan()` keeps its shape; `MockLockController.simulateTagRead()` becomes `LockEngine.handleTag(_:)`, which enforces unlock places itself.
 - `currentIntention` is ready for the Phase 5 Live Activity.
 - An emergency pass doesn't end the lock record today, so Insights counts pass time as locked. Phase 4 can record pass windows and subtract them if that matters.
 - Onboarding's Screen Time step calls the real authorization on device; Phase 4 should re-check it on launch and show the Screen Time step again if access was revoked.
+- Every shield path must apply the active mode's selection and honour `alwaysAllowed`. Today they all read `store.selection`, which `AppModel` never writes: `LockEngine.handleTag` (`LockEngine.swift:95`), `LockEngine.relockNow` (`:134`), and `EmergencyRelock.perform` (`Shared/EmergencyRelock.swift:10`), which `LockEngine.tick` and the monitor extension both use. Fixing `handleTag` alone leaves the phone open after a pass relocks. The monitor has no `AppModel`, so the resolved selection must be readable from `SharedStore`. `alwaysAllowed` also needs `ShieldController.apply` to change: `Shared/ShieldController.swift:23,25` uses `.specific(categories)` with no `except:`.
+- Home's timer restarts after a pass while the record keeps the full span; decide this together with pass windows.
+- One `TagReader`, owned by the engine. Give the verdict before invalidating the NFC session. Scan-flow tests belong on `handleTag`.
+- Device checks: the lock moment and haptics against the NFC sheet; the milestone cover against the unlock spring; `wrongPlace`; whether iOS asks for Screen Time again after a decline; Open Settings; both real pickers; which Screen Time errors actually fire.
+- The controller's stored passes move to `LockEngine`.

@@ -103,6 +103,23 @@ final class SharedStore {
         set { write(newValue, .alwaysAllowed) }
     }
 
+    /// What the running lock is for, if the owner said. Cleared on unlock.
+    var currentIntention: String? {
+        get { read(.currentIntention, absent: nil, corrupt: nil) }
+        set { write(newValue, .currentIntention) }
+    }
+
+    var interests: [Interest] {
+        get { read(.interests, absent: [], corrupt: []) }
+        set { write(newValue, .interests) }
+    }
+
+    /// Milestones already shown, by raw value, so each shows once.
+    var seenMilestones: [String] {
+        get { read(.seenMilestones, absent: [], corrupt: []) }
+        set { write(newValue, .seenMilestones) }
+    }
+
     var log: [LogEntry] {
         read(.log, absent: [], corrupt: [])
     }
@@ -120,6 +137,7 @@ final class SharedStore {
     private enum Key: String {
         case session, selection, pairedTags, passesLeft, relockStrategy, log
         case modes, activeModeID, defaultPlace, lockHistory, alwaysAllowed
+        case currentIntention, interests, seenMilestones
     }
 
     /// `absent` when nothing was ever stored. `corrupt` when data is there but won't decode;

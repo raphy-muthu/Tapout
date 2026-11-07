@@ -14,10 +14,34 @@ struct MockLockControllerTests {
         MockLockController(session: session, passesLeft: passesLeft, now: { [clock] in clock.now })
     }
 
-    @Test func startsUnlockedWithThreePasses() {
-        let controller = makeController()
+    @Test func startsUnlockedWithEveryPass() {
+        let controller = MockLockController()
         #expect(controller.session == .unlocked)
-        #expect(controller.passesLeft == 3)
+        #expect(controller.passesLeft == SharedStore.totalPasses)
+    }
+
+    @Test func spendingAPassWritesToTheStore() {
+        let store = SharedStore.makeTest()
+        let controller = MockLockController(session: .locked(since: clock.now), store: store, now: { [clock] in clock.now })
+        controller.useEmergencyPass()
+        #expect(controller.passesLeft == SharedStore.totalPasses - 1)
+        #expect(store.passesLeft == SharedStore.totalPasses - 1)
+    }
+
+    @Test func aNewControllerFromTheStoreKeepsTheCount() {
+        let store = SharedStore.makeTest()
+        let first = MockLockController(session: .locked(since: clock.now), store: store, now: { [clock] in clock.now })
+        first.useEmergencyPass()
+        let second = MockLockController(store: store)
+        #expect(second.passesLeft == SharedStore.totalPasses - 1)
+    }
+
+    @Test func aRefusedPassWritesNothing() {
+        let store = SharedStore.makeTest()
+        store.passesLeft = 2
+        let controller = MockLockController(store: store)
+        controller.useEmergencyPass()
+        #expect(store.passesLeft == 2)
     }
 
     @Test func tagReadLocksAtTheCurrentTime() {
@@ -86,4 +110,26 @@ struct MockLockControllerTests {
         controller.simulateTagRead()
         #expect(controller.session == .unlocked)
     }
+
+    #if DEBUG
+    @Test func launchArgumentsReadTheStoredPasses() {
+        let store = SharedStore.makeTest()
+        store.passesLeft = 1
+        #expect(MockLockController.fromLaunchArguments([], store: store).passesLeft == 1)
+
+        let locked = MockLockController.fromLaunchArguments(["-mockState", "locked"], store: store)
+        #expect(locked.session.lockState == .locked)
+        #expect(locked.passesLeft == 1)
+    }
+
+    /// The emergency screenshot state always reads "2 left", and never changes the real count.
+    @Test func mockEmergencyLeavesTheStoreAlone() {
+        let store = SharedStore.makeTest()
+        store.passesLeft = 1
+        let emergency = MockLockController.fromLaunchArguments(["-mockState", "emergency"], store: store)
+        if case .emergency = emergency.session {} else { Issue.record("expected emergency") }
+        #expect(emergency.passesLeft == 2)
+        #expect(store.passesLeft == 1)
+    }
+    #endif
 }

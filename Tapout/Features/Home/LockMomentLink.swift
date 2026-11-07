@@ -8,7 +8,7 @@ struct LockMomentLink {
 }
 
 enum LockMomentPart: Hashable {
-    case orb, timer, stateWord
+    case orb, timer, stateWord, intention
 }
 
 extension EnvironmentValues {

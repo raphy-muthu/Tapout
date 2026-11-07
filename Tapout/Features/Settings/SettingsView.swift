@@ -130,10 +130,13 @@ struct SettingsView: View {
                 .font(.tFootnote)
                 .foregroundStyle(Color.inkTertiary)
             #if DEBUG
-            Button("Developer Lab") { showingLab = true }
-                .font(.tFootnote)
-                .foregroundStyle(Color.inkTertiary)
-                .frame(minHeight: 44)
+            Button { showingLab = true } label: {
+                Text("Developer Lab")
+                    .font(.tFootnote)
+                    .foregroundStyle(Color.inkTertiary)
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
+            }
             #endif
         }
         .padding(.top, Space.lg)

@@ -19,18 +19,26 @@ struct PlaceSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Space.lg) {
             HStack {
-                Button(isLocked ? "Close" : "Cancel") { dismiss() }
-                    .font(.tBody)
-                    .foregroundStyle(Color.inkSecondary)
+                Button { dismiss() } label: {
+                    Text(isLocked ? "Close" : "Cancel")
+                        .font(.tBody)
+                        .foregroundStyle(Color.inkSecondary)
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
+                }
                 Spacer()
                 if !isLocked {
-                    Button("Save") {
+                    Button {
                         guard !isLocked else { return }
                         model.renamePlace(place.uid, to: name)
                         dismiss()
+                    } label: {
+                        Text("Save")
+                            .font(.tHeadline)
+                            .foregroundStyle(Color.ink)
+                            .frame(minWidth: 44, minHeight: 44)
+                            .contentShape(Rectangle())
                     }
-                    .font(.tHeadline)
-                    .foregroundStyle(Color.ink)
                     .disabled(trimmedName.isEmpty)
                     .opacity(trimmedName.isEmpty ? 0.45 : 1)
                 }
@@ -72,10 +80,13 @@ struct PlaceSheet: View {
             Spacer(minLength: 0)
 
             if !isLocked {
-                Button("Remove place", role: .destructive) { confirmingRemove = true }
-                    .font(.tBody)
-                    .foregroundStyle(Color.danger)
-                    .frame(maxWidth: .infinity, minHeight: 44)
+                Button(role: .destructive) { confirmingRemove = true } label: {
+                    Text("Remove place")
+                        .font(.tBody)
+                        .foregroundStyle(Color.danger)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .contentShape(Rectangle())
+                }
             }
         }
         .padding(.horizontal, Space.lg)

@@ -8,7 +8,7 @@ enum DemoData {
     static let car = TagUID(hex: "04A1B2C3D4E503")
     static let bedroom = TagUID(hex: "04A1B2C3D4E504")
 
-    /// Replaces modes, places, the default place and the lock history. Leaves lock state alone.
+    /// Replaces modes, places, the default place, the lock history and the passes. Leaves lock state alone.
     static func seed(_ store: SharedStore, now: Date = .now, calendar: Calendar = .current) {
         let pairedAt = now.addingTimeInterval(-30 * 86_400)
         store.pairedTags = [
@@ -38,6 +38,8 @@ enum DemoData {
         store.modes = [deepWork, evenings, weekend, sleep]
         store.activeModeID = deepWork.id
         store.lockHistory = history(deepWork: deepWork.id, evenings: evenings.id, now: now, calendar: calendar)
+        store.interests = [.sports, .movies]
+        store.passesLeft = 3 // what the specs show
     }
 
     /// A model over a scratch store, seeded, for `#Preview`s.
@@ -55,8 +57,12 @@ enum DemoData {
         for day in 0..<7 {
             guard let midnight = calendar.date(byAdding: .day, value: -day, to: calendar.startOfDay(for: now)) else { continue }
             let morning = midnight.addingTimeInterval(9.5 * 3600)
+            // Today's goal is unanswered, so Goals done reads "2 of 3" whatever the time of day.
+            let goals: [(String, Bool?)] = [("Reading", nil), ("Essay outline", true), ("Chapter 4 notes", true), ("Problem set", false)]
+            let goal = day < goals.count ? goals[day] : nil
             records.append(LockRecord(start: morning, end: morning + Double(60 + day * 10) * 60,
-                                      placeUID: places[day % places.count], modeID: deepWork))
+                                      placeUID: places[day % places.count], modeID: deepWork,
+                                      intention: goal?.0, intentionDone: goal?.1 ?? nil))
             let evening = midnight.addingTimeInterval(19.5 * 3600)
             records.append(LockRecord(start: evening, end: evening + 45 * 60, placeUID: kitchen, modeID: evenings))
         }
@@ -66,10 +72,18 @@ enum DemoData {
 
 #if DEBUG
 extension AppModel {
-    /// `-demoData` replaces the App Group's modes, places and history with `DemoData`, for screenshots.
+    /// Launch arguments for screenshots and testing:
+    /// `-demoData` replaces the App Group's modes, places, history and passes with `DemoData` and skips onboarding;
+    /// `-skipOnboarding` skips it without sample data; `-resetOnboarding` shows it again;
+    /// `-resetMilestones` lets milestones show again.
     static func fromLaunchArguments(_ arguments: [String] = ProcessInfo.processInfo.arguments) -> AppModel {
         let store = SharedStore.appGroup()
         if arguments.contains("-demoData") { DemoData.seed(store) }
+        if arguments.contains("-demoData") || arguments.contains("-skipOnboarding") {
+            UserDefaults.standard.set(true, forKey: AppSettings.onboardedKey)
+        }
+        if arguments.contains("-resetOnboarding") { UserDefaults.standard.set(false, forKey: AppSettings.onboardedKey) }
+        if arguments.contains("-resetMilestones") { store.seenMilestones = [] }
         return AppModel(store: store)
     }
 }

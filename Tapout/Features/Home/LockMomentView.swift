@@ -7,6 +7,8 @@ struct LockMomentView: View {
     let placeName: String
     /// The lock that just started; drives the timer once it settles.
     let session: LockSession
+    /// What the lock is for, shown under "Locked".
+    var intention: String? = nil
     let onFinished: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -69,6 +71,13 @@ struct LockMomentView: View {
                     .lockMomentMatch(.timer, inOverlay: true)
                     StateLabel(text: "Locked", systemImage: "lock", color: .emberInk)
                         .lockMomentMatch(.stateWord, inOverlay: true)
+                    if let intention {
+                        Text(intention)
+                            .font(.tSubhead)
+                            .foregroundStyle(Color.inkSecondary)
+                            .lineLimit(1)
+                            .lockMomentMatch(.intention, inOverlay: true)
+                    }
                 }
                 .transition(reduceMotion ? .opacity : .scale(scale: 0.94).combined(with: .opacity))
             } else if frame == 1 {
@@ -77,7 +86,7 @@ struct LockMomentView: View {
                     .foregroundStyle(Color.ink)
             }
         }
-        .frame(height: 176, alignment: .top)
+        .frame(height: 204, alignment: .top)
     }
 
     private func play() async {
@@ -144,5 +153,5 @@ private struct Shockwave: View {
 }
 
 #Preview {
-    LockMomentView(placeName: MockData.placeName, session: .locked(since: .now)) {}
+    LockMomentView(placeName: "Kitchen", session: .locked(since: .now), intention: "Essay outline") {}
 }

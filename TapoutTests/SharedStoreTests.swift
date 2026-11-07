@@ -128,4 +128,17 @@ struct SharedStoreTests {
         store.modes = [Mode(name: "Focus")]
         #expect(UserDefaults(suiteName: suite)!.data(forKey: "modes.unreadable") == Data("not json".utf8))
     }
+
+    @Test func phase3bKeysDefaultAndRoundTrip() {
+        let store = SharedStore.makeTest()
+        #expect(store.currentIntention == nil)
+        #expect(store.interests.isEmpty)
+        #expect(store.seenMilestones.isEmpty)
+        store.currentIntention = "Essay"
+        store.interests = [.reading]
+        store.seenMilestones = ["firstLock"]
+        #expect(store.currentIntention == "Essay")
+        #expect(store.interests == [.reading])
+        #expect(store.seenMilestones == ["firstLock"])
+    }
 }

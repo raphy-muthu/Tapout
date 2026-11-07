@@ -19,4 +19,18 @@ struct DemoDataTests {
         #expect(!model.history.isEmpty)
         #expect(model.history.allSatisfy { modeIDs.contains($0.modeID) })
     }
+
+    @Test func seedsIntentionsAndInterests() {
+        let store = SharedStore.makeTest()
+        DemoData.seed(store)
+        let model = AppModel(store: store)
+        #expect(model.interests == [.sports, .movies])
+        #expect(model.history.contains { $0.intention != nil && $0.intentionDone != nil })
+    }
+
+    @Test func seedsThreePassesLikeTheSpecs() {
+        let store = SharedStore.makeTest()
+        DemoData.seed(store)
+        #expect(store.passesLeft == 3)
+    }
 }

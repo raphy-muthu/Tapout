@@ -1,7 +1,8 @@
 import Foundation
 import Observation
 
-/// Stands in for the real NFC + Screen Time controller until Phase 4. Nothing is persisted.
+/// Stands in for the real NFC + Screen Time controller until Phase 4. Lock state isn't persisted;
+/// passes are, when it has a store, because they never refill.
 @MainActor
 @Observable
 final class MockLockController {
@@ -12,11 +13,22 @@ final class MockLockController {
 
     private(set) var session: LockSession
     private(set) var passesLeft: Int
+    @ObservationIgnored private let store: SharedStore?
     @ObservationIgnored private let now: () -> Date
 
-    init(session: LockSession = .unlocked, passesLeft: Int = 3, now: @escaping () -> Date = Date.init) {
+    /// No store: passes last as long as this object. For previews and tests.
+    init(session: LockSession = .unlocked, passesLeft: Int = SharedStore.totalPasses, now: @escaping () -> Date = Date.init) {
         self.session = session
         self.passesLeft = passesLeft
+        self.store = nil
+        self.now = now
+    }
+
+    /// Starts from the stored passes and writes back each one spent.
+    init(session: LockSession = .unlocked, store: SharedStore, now: @escaping () -> Date = Date.init) {
+        self.session = session
+        self.passesLeft = store.passesLeft
+        self.store = store
         self.now = now
     }
 
@@ -32,6 +44,7 @@ final class MockLockController {
     func useEmergencyPass() {
         guard case .locked = session, passesLeft > 0 else { return }
         passesLeft -= 1
+        store?.passesLeft = passesLeft
         session = .emergency(relockAt: now() + Self.emergencyDuration, duration: Self.emergencyDuration)
     }
 
@@ -51,19 +64,20 @@ final class MockLockController {
 
 #if DEBUG
 extension MockLockController {
-    /// `-mockState locked|emergency` starts in that state, for screenshots.
-    static func fromLaunchArguments(_ arguments: [String] = ProcessInfo.processInfo.arguments) -> MockLockController {
+    /// `-mockState locked|emergency` starts in that state, for screenshots. The emergency state always
+    /// reads "2 left", so it stays off the store and can't change the real count.
+    static func fromLaunchArguments(_ arguments: [String] = ProcessInfo.processInfo.arguments, store: SharedStore = .appGroup()) -> MockLockController {
         guard let index = arguments.firstIndex(of: "-mockState"), index + 1 < arguments.count else {
-            return MockLockController()
+            return MockLockController(store: store)
         }
         let now = Date()
         switch arguments[index + 1] {
         case "locked":
-            return MockLockController(session: .locked(since: now - (47 * 60 + 12)))
+            return MockLockController(session: .locked(since: now - (47 * 60 + 12)), store: store)
         case "emergency":
             return MockLockController(session: .emergency(relockAt: now + (4 * 60 + 32), duration: emergencyDuration), passesLeft: 2)
         default:
-            return MockLockController()
+            return MockLockController(store: store)
         }
     }
 }

@@ -1,10 +1,13 @@
 import SwiftUI
 
-/// Home in its three states, matching design/screens/Home.dc.html.
+/// Home in its three states, matching design/screens/Home.dc.html, plus the optional lock intention.
 struct HomeView: View {
     let controller: MockLockController
     let model: AppModel
+    @Binding var intentionDraft: String
+    /// Reads a tag to lock or unlock. The locked orb uses it too: tap the orb, then the tag.
     let onScan: () -> Void
+    let onEmergencyPass: () -> Void
     let onOpenSettings: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -37,17 +40,29 @@ struct HomeView: View {
     private var unlocked: some View {
         VStack(spacing: 0) {
             Spacer(minLength: 0)
-            VStack(spacing: Space.xl) {
-                OrbView(tone: .slate, size: 300)
-                VStack(spacing: Space.xxs) {
-                    StateLabel(text: "Unlocked", systemImage: "lock.open", color: .slateInk)
-                    Text("\(TimeFormat.short(MockData.phoneFreeToday)) phone-free today")
-                        .font(.tSubhead)
-                        .foregroundStyle(Color.inkTertiary)
-                }
+            // Shrinks the orb when the keyboard is up for the intention field.
+            ViewThatFits(in: .vertical) {
+                orbAndState(size: 300)
+                orbAndState(size: 200)
+                orbAndState(size: 120)
             }
             Spacer(minLength: 0)
-            PrimaryButton(title: "Scan", systemImage: "wave.3.right", action: onScan)
+            VStack(spacing: Space.sm) {
+                IntentionField(text: $intentionDraft, recent: model.recentIntentions)
+                PrimaryButton(title: "Scan", systemImage: "wave.3.right", action: onScan)
+            }
+        }
+    }
+
+    private func orbAndState(size: CGFloat) -> some View {
+        VStack(spacing: Space.xl) {
+            OrbView(tone: .slate, size: size)
+            VStack(spacing: Space.xxs) {
+                StateLabel(text: "Unlocked", systemImage: "lock.open", color: .slateInk)
+                Text("\(TimeFormat.short(model.phoneFreeToday())) phone-free today")
+                    .font(.tSubhead)
+                    .foregroundStyle(Color.inkTertiary)
+            }
         }
     }
 
@@ -56,13 +71,12 @@ struct HomeView: View {
         return VStack(spacing: 0) {
             Spacer(minLength: 0)
             VStack(spacing: 20) {
-                // Stand-in for tapping a tag until Core NFC arrives in Phase 4.
-                Button(action: unlock) {
+                Button(action: onScan) {
                     OrbView(tone: .ember, ring: 1, size: 244)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Unlock")
-                .accessibilityHint("Stands in for tapping your tag")
+                .accessibilityLabel("Scan to unlock")
+                .accessibilityHint("Then hold your tag near the top of your iPhone")
                 .lockMomentMatch(.orb)
 
                 VStack(spacing: Space.xs) {
@@ -71,15 +85,23 @@ struct HomeView: View {
                         .lockMomentMatch(.timer)
                     StateLabel(text: "Locked", systemImage: "lock", color: .emberInk)
                         .lockMomentMatch(.stateWord)
+                    if let intention = model.currentIntention {
+                        Text(intention)
+                            .font(.tSubhead)
+                            .foregroundStyle(Color.inkSecondary)
+                            .lineLimit(1)
+                            .lockMomentMatch(.intention)
+                    }
                 }
             }
             Spacer(minLength: 0)
             if controller.passesLeft > 0 {
-                Button(action: useEmergencyPass) {
+                Button(action: onEmergencyPass) {
                     Text("Emergency pass · \(controller.passesLeft) left")
                         .font(.tSubhead)
                         .foregroundStyle(Color.inkSecondary)
                         .frame(minHeight: 44)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
@@ -109,48 +131,51 @@ struct HomeView: View {
         }
     }
 
-    private func unlock() {
-        Haptics.unlock()
-        withAnimation(reduceMotion ? Motion.unlockReduced : Motion.unlock) { controller.simulateTagRead() }
-    }
-
-    private func useEmergencyPass() {
-        Haptics.unlock()
-        withAnimation(reduceMotion ? Motion.unlockReduced : Motion.ui) { controller.useEmergencyPass() }
-    }
-
     private func relockNow() {
         Haptics.lock()
         withAnimation(reduceMotion ? Motion.lockReduced : Motion.lock) { controller.relockNow() }
     }
 }
 
+private extension RootView {
+    /// Previews show Home, not onboarding: the flag sits in a scratch suite.
+    func onboardedForPreview() -> some View {
+        let defaults = UserDefaults(suiteName: "tapout.preview")!
+        defaults.set(true, forKey: AppSettings.onboardedKey)
+        return defaultAppStorage(defaults)
+    }
+}
+
 #Preview("Unlocked · dark") {
-    RootView(model: DemoData.previewModel()).preferredColorScheme(.dark)
+    RootView(model: DemoData.previewModel()).onboardedForPreview().preferredColorScheme(.dark)
 }
 
 #Preview("Locked · dark") {
-    RootView(controller: MockLockController(session: .locked(since: .now - (47 * 60 + 12))), model: DemoData.previewModel())
+    RootView(controller: MockLockController(session: .locked(since: .now - (47 * 60 + 12)), passesLeft: 3), model: DemoData.previewModel())
+        .onboardedForPreview()
         .preferredColorScheme(.dark)
 }
 
 #Preview("Emergency · dark") {
     RootView(controller: MockLockController(session: .emergency(relockAt: .now + 272, duration: 300), passesLeft: 2),
              model: DemoData.previewModel())
+        .onboardedForPreview()
         .preferredColorScheme(.dark)
 }
 
 #Preview("Unlocked · light") {
-    RootView(model: DemoData.previewModel()).preferredColorScheme(.light)
+    RootView(model: DemoData.previewModel()).onboardedForPreview().preferredColorScheme(.light)
 }
 
 #Preview("Locked · light") {
-    RootView(controller: MockLockController(session: .locked(since: .now - (47 * 60 + 12))), model: DemoData.previewModel())
+    RootView(controller: MockLockController(session: .locked(since: .now - (47 * 60 + 12)), passesLeft: 3), model: DemoData.previewModel())
+        .onboardedForPreview()
         .preferredColorScheme(.light)
 }
 
 #Preview("Emergency · light") {
     RootView(controller: MockLockController(session: .emergency(relockAt: .now + 272, duration: 300), passesLeft: 2),
              model: DemoData.previewModel())
+        .onboardedForPreview()
         .preferredColorScheme(.light)
 }
