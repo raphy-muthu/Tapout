@@ -18,6 +18,8 @@ struct WelcomeStep: View {
 
 /// Step 2.
 struct ScreenTimeStep: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     var body: some View {
         VStack(spacing: Space.xxl) {
             ZStack(alignment: .bottomTrailing) {
@@ -41,7 +43,7 @@ struct ScreenTimeStep: View {
                 Text("Tapout uses it to block apps on this iPhone.")
                     .font(.tBody)
                     .foregroundStyle(Color.inkSecondary)
-                    .frame(maxWidth: 300)
+                    .frame(maxWidth: typeSize.isAccessibilitySize ? nil : 300)
             }
             .multilineTextAlignment(.center)
         }
@@ -149,6 +151,8 @@ struct FocusTimeStep: View {
     @Binding var window: FocusWindow?
     @Binding var days: Set<Int>
 
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     var body: some View {
         VStack(alignment: .leading, spacing: Space.lg) {
             VStack(alignment: .leading, spacing: Space.xs) {
@@ -177,11 +181,19 @@ struct FocusTimeStep: View {
             window = option
         } label: {
             HStack(spacing: Space.sm) {
-                Text(option.title).font(.tHeadline).foregroundStyle(Color.ink)
-                Spacer()
-                Text(ScheduleFormat.range(ModeSchedule(days: [], start: option.start, end: option.end)))
-                    .font(.numberSmall)
-                    .foregroundStyle(Color.inkSecondary)
+                // At accessibility sizes the range goes under the title, so neither word breaks mid-word.
+                if typeSize.isAccessibilitySize {
+                    VStack(alignment: .leading, spacing: Space.xxs) {
+                        Text(option.title).font(.tHeadline).foregroundStyle(Color.ink)
+                        range(option)
+                    }
+                    .padding(.vertical, Space.sm)
+                    Spacer(minLength: 0)
+                } else {
+                    Text(option.title).font(.tHeadline).foregroundStyle(Color.ink)
+                    Spacer()
+                    range(option)
+                }
                 Image(systemName: window == option ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 22))
                     .foregroundStyle(window == option ? Color.slateInk : Color.inkTertiary)
@@ -192,11 +204,19 @@ struct FocusTimeStep: View {
         .buttonStyle(.plain)
         .accessibilityAddTraits(window == option ? .isSelected : [])
     }
+
+    private func range(_ option: FocusWindow) -> some View {
+        Text(ScheduleFormat.range(ModeSchedule(days: [], start: option.start, end: option.end)))
+            .font(.numberSmall)
+            .foregroundStyle(Color.inkSecondary)
+    }
 }
 
 /// Step 5: the first tag, and interests for Insights' comparisons.
 struct PairStep: View {
     @Binding var interests: Set<Interest>
+
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         VStack(spacing: Space.xl) {
@@ -219,7 +239,9 @@ struct PairStep: View {
             }
             VStack(alignment: .leading, spacing: Space.sm) {
                 SectionLabel(text: "Your interests")
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Space.xs), count: 3), spacing: Space.xs) {
+                // One column at accessibility sizes, so no interest breaks mid-word.
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Space.xs), count: typeSize.isAccessibilitySize ? 1 : 3),
+                          spacing: Space.xs) {
                     ForEach(Interest.allCases, id: \.self) { interest in
                         ChoiceChip(title: interest.title, isOn: interests.contains(interest), fillsWidth: true) {
                             if interests.contains(interest) { interests.remove(interest) } else { interests.insert(interest) }

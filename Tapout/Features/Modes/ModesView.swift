@@ -5,6 +5,7 @@ struct ModesView: View {
     let model: AppModel
 
     @Environment(\.isLocked) private var isLocked
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var editing: Mode?
 
     var body: some View {
@@ -23,7 +24,7 @@ struct ModesView: View {
                 SectionLabel(text: "Ready")
                     .padding(.top, Space.xl)
                     .padding(.bottom, Space.sm)
-                LazyVGrid(columns: [GridItem(.flexible(), spacing: Space.sm), GridItem(.flexible())], spacing: Space.sm) {
+                LazyVGrid(columns: GridItem.tiles(typeSize), spacing: Space.sm) {
                     ForEach(model.otherModes) { mode in
                         Button { editing = mode } label: { ModeTile(mode: mode) }
                             .buttonStyle(PressScaleStyle())

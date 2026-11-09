@@ -33,6 +33,7 @@ struct RejectedView: View {
     let onPair: () -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         VStack(spacing: 0) {
@@ -41,26 +42,14 @@ struct RejectedView: View {
                 Spacer()
             }
             Spacer(minLength: 0)
-            VStack(spacing: 40) {
-                ZStack {
-                    Circle()
-                        .stroke(Color.danger, style: StrokeStyle(lineWidth: 4, lineCap: .round, dash: [46, 32]))
-                        .opacity(0.9)
-                        .frame(width: 248, height: 248)
-                    OrbView(tone: .slate, size: 220)
+            if typeSize.isAccessibilitySize {
+                // A smaller orb at accessibility sizes so the words fit whole; scrolls if even that is too tall.
+                ViewThatFits(in: .vertical) {
+                    moment(scale: 0.5)
+                    ScrollView { moment(scale: 0.5) }.scrollIndicators(.hidden)
                 }
-                .frame(width: 260, height: 260)
-                .accessibilityHidden(true)
-                VStack(spacing: Space.xs) {
-                    Text(rejected.title)
-                        .font(.tTitle1)
-                        .foregroundStyle(Color.ink)
-                        .frame(maxWidth: 300)
-                    if let hint = rejected.hint {
-                        Text(hint).font(.tBody).foregroundStyle(Color.inkSecondary)
-                    }
-                }
-                .multilineTextAlignment(.center)
+            } else {
+                moment(scale: 1)
             }
             Spacer(minLength: 0)
             VStack(spacing: Space.xs) {
@@ -87,6 +76,30 @@ struct RejectedView: View {
         .padding(.bottom, Space.md)
         .background(Color.bg.ignoresSafeArea())
         .environment(\.accent, .for(.unlocked))
+    }
+
+    private func moment(scale: CGFloat) -> some View {
+        VStack(spacing: 40 * scale) {
+            ZStack {
+                Circle()
+                    .stroke(Color.danger, style: StrokeStyle(lineWidth: 4, lineCap: .round, dash: [46 * scale, 32 * scale]))
+                    .opacity(0.9)
+                    .frame(width: 248 * scale, height: 248 * scale)
+                OrbView(tone: .slate, size: 220 * scale)
+            }
+            .frame(width: 260 * scale, height: 260 * scale)
+            .accessibilityHidden(true)
+            VStack(spacing: Space.xs) {
+                Text(rejected.title)
+                    .font(.tTitle1)
+                    .foregroundStyle(Color.ink)
+                    .frame(maxWidth: typeSize.isAccessibilitySize ? nil : 300)
+                if let hint = rejected.hint {
+                    Text(hint).font(.tBody).foregroundStyle(Color.inkSecondary)
+                }
+            }
+            .multilineTextAlignment(.center)
+        }
     }
 }
 

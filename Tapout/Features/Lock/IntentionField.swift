@@ -14,7 +14,9 @@ struct IntentionField: View {
             .foregroundStyle(Color.ink)
             .submitLabel(.done)
             .padding(.horizontal, Space.md)
-            .frame(height: 44)
+            // Grows with large text; at default sizes the 44pt minimum sets the height.
+            .padding(.vertical, Space.xs)
+            .frame(minHeight: 44)
             .background(Color.surface1, in: Capsule(style: .continuous))
             .cardShadow()
             .accessibilityHint("Optional")

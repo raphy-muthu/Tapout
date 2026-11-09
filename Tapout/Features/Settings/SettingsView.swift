@@ -9,6 +9,7 @@ struct SettingsView: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.isLocked) private var isLocked
+    @Environment(\.dynamicTypeSize) private var typeSize
     @AppStorage(AppSettings.hapticsKey) private var haptics = true
     @AppStorage(AppSettings.liveActivityKey) private var liveActivity = true
     @AppStorage(AppSettings.appearanceKey) private var appearance = Appearance.system
@@ -56,7 +57,7 @@ struct SettingsView: View {
                 Spacer()
             }
         }
-        .frame(height: 44)
+        .frame(minHeight: 44)
     }
 
     private var passesCard: some View {
@@ -93,23 +94,37 @@ struct SettingsView: View {
         VStack(spacing: 0) {
             toggleRow("Haptics", isOn: $haptics)
             toggleRow("Live Activity", isOn: $liveActivity)
-            HStack {
-                Text("Appearance").font(.tBody).foregroundStyle(Color.ink)
-                Spacer()
-                Picker("Appearance", selection: $appearance) {
-                    ForEach(Appearance.allCases) { Text($0.title).tag($0) }
+            // The menu goes under its label at accessibility sizes, so neither breaks mid-word.
+            if typeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: Space.xxs) {
+                    Text("Appearance").font(.tBody).foregroundStyle(Color.ink)
+                    appearancePicker
                 }
-                .pickerStyle(.menu)
-                .labelsHidden()
-                .tint(Color.inkSecondary)
-                .opacity(isLocked ? 0.45 : 1)
+                .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+                .padding(.vertical, Space.xs)
+            } else {
+                HStack {
+                    Text("Appearance").font(.tBody).foregroundStyle(Color.ink)
+                    Spacer()
+                    appearancePicker
+                }
+                .frame(minHeight: 56)
             }
-            .frame(minHeight: 56)
         }
         .disabled(isLocked)
         .padding(.horizontal, 20)
         .padding(.vertical, Space.xxs)
         .card(padding: 0)
+    }
+
+    private var appearancePicker: some View {
+        Picker("Appearance", selection: $appearance) {
+            ForEach(Appearance.allCases) { Text($0.title).tag($0) }
+        }
+        .pickerStyle(.menu)
+        .labelsHidden()
+        .tint(Color.inkSecondary)
+        .opacity(isLocked ? 0.45 : 1)
     }
 
     private func toggleRow(_ title: String, isOn: Binding<Bool>) -> some View {
@@ -154,13 +169,24 @@ private struct SettingsRow: View {
     let action: () -> Void
 
     @Environment(\.isLocked) private var isLocked
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: 6) {
-                Text(title).font(.tBody).foregroundStyle(Color.ink)
-                Spacer()
-                Text(value).font(.tBody).foregroundStyle(Color.inkSecondary)
+                // The value goes under the title at accessibility sizes, so "Always allowed" keeps its words whole.
+                if typeSize.isAccessibilitySize {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(title).font(.tBody).foregroundStyle(Color.ink)
+                        Text(value).font(.tBody).foregroundStyle(Color.inkSecondary)
+                    }
+                    .padding(.vertical, Space.xs)
+                    Spacer(minLength: 0)
+                } else {
+                    Text(title).font(.tBody).foregroundStyle(Color.ink)
+                    Spacer()
+                    Text(value).font(.tBody).foregroundStyle(Color.inkSecondary)
+                }
                 Image(systemName: isLocked ? "lock" : "chevron.right")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(Color.inkSecondary)

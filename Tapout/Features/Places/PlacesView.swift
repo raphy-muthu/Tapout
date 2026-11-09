@@ -5,6 +5,7 @@ struct PlacesView: View {
     let model: AppModel
 
     @Environment(\.isLocked) private var isLocked
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var pairing = false
     @State private var selected: PairedTag?
 
@@ -23,7 +24,7 @@ struct PlacesView: View {
                     }
                 }
                 .padding(.top, Space.lg)
-                LazyVGrid(columns: [GridItem(.flexible(), spacing: Space.sm), GridItem(.flexible())], spacing: Space.sm) {
+                LazyVGrid(columns: GridItem.tiles(typeSize), spacing: Space.sm) {
                     ForEach(model.otherPlaces) { place in
                         Button { selected = place } label: {
                             PlaceTile(name: place.name, locks: model.lockCount(at: place.uid))

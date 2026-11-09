@@ -5,8 +5,13 @@ struct ComparisonCard: View {
     let comparison: Comparison
     let total: TimeInterval
 
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     var body: some View {
-        HStack(spacing: Space.md) {
+        // The disc goes above the line at accessibility sizes, so the line gets the card's full width.
+        (typeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: Space.md))
+            : AnyLayout(HStackLayout(spacing: Space.md))) {
             Image(systemName: comparison.symbol)
                 .font(.system(size: 26, weight: .regular))
                 .foregroundStyle(Color.emberInk)

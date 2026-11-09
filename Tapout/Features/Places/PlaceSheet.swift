@@ -7,6 +7,7 @@ struct PlaceSheet: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.isLocked) private var isLocked
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var name: String
     @State private var confirmingRemove = false
 
@@ -92,7 +93,8 @@ struct PlaceSheet: View {
         .padding(.horizontal, Space.lg)
         .padding(.top, Space.lg)
         .padding(.bottom, Space.md)
-        .presentationDetents([.medium])
+        // Full height at accessibility sizes; a medium sheet can't hold the name and both actions.
+        .presentationDetents(typeSize.isAccessibilitySize ? [.large] : [.medium])
         .presentationCornerRadius(Radius.sheet)
         .presentationBackground(Color.surface1)
         .confirmationDialog("Remove \(place.name)?", isPresented: $confirmingRemove, titleVisibility: .visible) {

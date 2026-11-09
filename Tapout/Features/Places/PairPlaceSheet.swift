@@ -16,6 +16,7 @@ struct PairPlaceSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.isLocked) private var isLocked
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var scanner: any TagScanning
     @State private var phase = Phase.scanning
     @State private var name = ""
@@ -28,30 +29,50 @@ struct PairPlaceSheet: View {
     }
 
     var body: some View {
-        VStack(spacing: Space.lg) {
-            status
-            if case .found = phase {
-                nameField
-                FlowLayout {
-                    ForEach(Self.suggestions, id: \.self) { suggestion in
-                        ChoiceChip(title: suggestion, isOn: name == suggestion) { name = suggestion }
+        Group {
+            // At accessibility sizes everything above the action scrolls, so nothing gets squeezed or truncated.
+            if typeSize.isAccessibilitySize {
+                VStack(spacing: Space.lg) {
+                    ScrollView {
+                        VStack(spacing: Space.lg) { content }
                     }
+                    .scrollIndicators(.hidden)
+                    .scrollBounceBehavior(.basedOnSize)
+                    actions
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                VStack(spacing: Space.lg) {
+                    content
+                    Spacer(minLength: 0)
+                    actions
+                }
             }
-            Spacer(minLength: 0)
-            actions
         }
         .padding(.horizontal, Space.lg)
         .padding(.top, Space.xl)
         .padding(.bottom, Space.lg)
-        .presentationDetents([.height(664)])
+        // Full height at accessibility sizes, so the field, suggestions and Save all fit.
+        .presentationDetents(typeSize.isAccessibilitySize ? [.large] : [.height(664)])
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(Radius.sheet)
         .presentationBackground(Color.surface1)
         .task(id: attempt) { await scan() }
         .onChange(of: isLocked) { _, locked in
             if locked { dismiss() }
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        status
+        if case .found = phase {
+            nameField
+            FlowLayout {
+                ForEach(Self.suggestions, id: \.self) { suggestion in
+                    ChoiceChip(title: suggestion, isOn: name == suggestion) { name = suggestion }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -90,7 +111,8 @@ struct PairPlaceSheet: View {
                 .foregroundStyle(Color.ink)
                 .submitLabel(.done)
                 .padding(.horizontal, Space.md)
-                .frame(height: 56)
+                .padding(.vertical, Space.xs) // grows with large text; the 56pt minimum holds at default sizes
+                .frame(minHeight: 56)
                 .background(Color.surface2, in: RoundedRectangle(cornerRadius: Radius.inner, style: .continuous))
         }
     }

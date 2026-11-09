@@ -7,6 +7,7 @@ struct ModeEditor: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.isLocked) private var isLocked
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var draft: Mode
     @State private var days: Set<Int>
     @State private var start: Date
@@ -129,18 +130,31 @@ struct ModeEditor: View {
 
     private var whenCard: some View {
         VStack(alignment: .leading, spacing: Space.md) {
-            HStack {
-                Text("When").font(.tHeadline).foregroundStyle(Color.ink)
-                Spacer()
-                if days.isEmpty {
-                    Text("Manual").font(.numberSmall).foregroundStyle(Color.inkSecondary)
-                } else {
-                    DatePicker("Starts", selection: $start, displayedComponents: .hourAndMinute).labelsHidden()
-                    Text("–").foregroundStyle(Color.inkSecondary)
-                    DatePicker("Ends", selection: $end, displayedComponents: .hourAndMinute).labelsHidden()
+            // At accessibility sizes the two times stack under the title; side by side they're wider than the screen.
+            if typeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: Space.xs) {
+                    Text("When").font(.tHeadline).foregroundStyle(Color.ink)
+                    if days.isEmpty {
+                        Text("Manual").font(.numberSmall).foregroundStyle(Color.inkSecondary)
+                    } else {
+                        DatePicker("Starts", selection: $start, displayedComponents: .hourAndMinute).labelsHidden()
+                        DatePicker("Ends", selection: $end, displayedComponents: .hourAndMinute).labelsHidden()
+                    }
                 }
+            } else {
+                HStack {
+                    Text("When").font(.tHeadline).foregroundStyle(Color.ink)
+                    Spacer()
+                    if days.isEmpty {
+                        Text("Manual").font(.numberSmall).foregroundStyle(Color.inkSecondary)
+                    } else {
+                        DatePicker("Starts", selection: $start, displayedComponents: .hourAndMinute).labelsHidden()
+                        Text("–").foregroundStyle(Color.inkSecondary)
+                        DatePicker("Ends", selection: $end, displayedComponents: .hourAndMinute).labelsHidden()
+                    }
+                }
+                .frame(minHeight: 44)
             }
-            .frame(minHeight: 44)
             DayChips(days: $days)
             Text(whenFootnote)
                 .font(.tFootnote)

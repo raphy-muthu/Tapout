@@ -5,6 +5,8 @@ import SwiftUI
 struct InsightsView: View {
     let model: AppModel
 
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     var body: some View {
         TimelineView(.everyMinute) { context in
             content(now: context.date, calendar: .current)
@@ -68,8 +70,10 @@ struct InsightsView: View {
     private func tiles(now: Date, calendar: Calendar) -> some View {
         let history = model.history
         let longest = Insights.longest(weekOf: now, history: history, calendar: calendar)
+        // One tile per row at accessibility sizes, so captions like "longest" don't break mid-word.
+        let row = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: Space.sm)) : AnyLayout(HStackLayout(spacing: Space.sm))
         return VStack(spacing: Space.sm) {
-            HStack(spacing: Space.sm) {
+            row {
                 InsightTile(value: "\(Insights.lockCount(weekOf: now, history: history, calendar: calendar))", caption: "locks")
                 if let longest {
                     InsightTile(value: TimeFormat.short(longest), caption: "longest", spokenValue: TimeFormat.spoken(longest))
@@ -78,7 +82,7 @@ struct InsightsView: View {
                 }
             }
             .fixedSize(horizontal: false, vertical: true)
-            HStack(spacing: Space.sm) {
+            row {
                 gatedTile(Insights.bestTime(history: history, now: now, calendar: calendar),
                           caption: "best time", waiting: "locks to best time") { $0.title }
                 gatedTile(Insights.goals(history: history, now: now),

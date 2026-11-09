@@ -8,6 +8,7 @@ struct DashedTile: View {
     let action: () -> Void
 
     @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         Button(action: action) {
@@ -20,6 +21,9 @@ struct DashedTile: View {
             }
             .font(.tSubhead.weight(.medium))
             .foregroundStyle(Color.inkSecondary)
+            // Keeps wrapped large text centred and off the dashed line.
+            .multilineTextAlignment(typeSize.isAccessibilitySize ? .center : .leading)
+            .padding(typeSize.isAccessibilitySize ? Space.sm : 0)
             .frame(maxWidth: .infinity, minHeight: 84)
             .overlay {
                 RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
@@ -33,5 +37,12 @@ struct DashedTile: View {
 
     private var icon: some View {
         Image(systemName: "plus").font(.system(size: 20, weight: .medium))
+    }
+}
+
+extension GridItem {
+    /// The Modes and Places tile grids: two columns, or one at accessibility sizes so names don't break mid-word.
+    static func tiles(_ typeSize: DynamicTypeSize) -> [GridItem] {
+        typeSize.isAccessibilitySize ? [GridItem(.flexible())] : [GridItem(.flexible(), spacing: Space.sm), GridItem(.flexible())]
     }
 }

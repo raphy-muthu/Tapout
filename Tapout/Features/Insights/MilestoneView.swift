@@ -29,6 +29,8 @@ struct MilestoneView: View {
             ViewThatFits(in: .vertical) {
                 moment(orb: 240)
                 moment(orb: 120)
+                // A long subtitle at the largest sizes scrolls rather than pushing Share off screen.
+                ScrollView { moment(orb: 120) }.scrollIndicators(.hidden)
             }
             Spacer(minLength: 0)
             VStack(spacing: Space.xs) {

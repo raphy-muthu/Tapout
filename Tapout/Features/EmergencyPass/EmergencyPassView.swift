@@ -9,6 +9,7 @@ struct EmergencyPassView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var typeSize
     /// The count when the screen opened, so spending the last pass doesn't flip the screen into "none left" mid-dismiss.
     @State private var passesAtOpen: Int
     @State private var countdown = HoldCountdown()
@@ -27,11 +28,14 @@ struct EmergencyPassView: View {
     private var passesShown: Int { countdown.isDone ? passesAtOpen - 1 : passesAtOpen }
 
     var body: some View {
+        // At accessibility sizes the words get room (title under the close button, a smaller ring) instead of
+        // a scroll view, which could cancel the 10-second hold.
+        let large = typeSize.isAccessibilitySize
         VStack(spacing: 0) {
             header
-            pips.padding(.top, 40)
+            pips.padding(.top, large ? Space.md : 40)
             Spacer(minLength: 0)
-            VStack(spacing: 28) {
+            VStack(spacing: large ? Space.md : 28) {
                 holdButton
                 VStack(spacing: Space.xxs) {
                     Text(passesAtOpen > 0 ? countdown.title : "No passes left.")
@@ -42,6 +46,7 @@ struct EmergencyPassView: View {
                         .foregroundStyle(Color.inkSecondary)
                 }
                 .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: large)
             }
             Spacer(minLength: 0)
         }
@@ -58,26 +63,50 @@ struct EmergencyPassView: View {
         }
     }
 
+    @ViewBuilder
     private var header: some View {
-        HStack {
-            CircleIconButton(systemImage: "xmark", label: "Close") { dismiss() }
-            Spacer()
-            Text("Emergency pass").font(.tHeadline).foregroundStyle(Color.ink)
-            Spacer()
-            Color.clear.frame(width: 44, height: 44)
+        if typeSize.isAccessibilitySize {
+            // The title wraps beside the close button rather than being centred and truncated.
+            HStack(spacing: Space.sm) {
+                CircleIconButton(systemImage: "xmark", label: "Close") { dismiss() }
+                Text("Emergency pass").font(.tHeadline).foregroundStyle(Color.ink).accessibilityAddTraits(.isHeader)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        } else {
+            HStack {
+                CircleIconButton(systemImage: "xmark", label: "Close") { dismiss() }
+                Spacer()
+                Text("Emergency pass").font(.tHeadline).foregroundStyle(Color.ink)
+                Spacer()
+                Color.clear.frame(width: 44, height: 44)
+            }
         }
     }
 
     private var pips: some View {
         VStack(spacing: Space.sm) {
             PassPips(left: passesShown, width: 40, height: 12)
-            (Text("\(passesShown)").font(.system(size: 15, weight: .semibold)).foregroundStyle(Color.ink)
+            // The count scales with the sentence at accessibility sizes instead of staying 15pt.
+            (Text("\(passesShown)")
+                .font(typeSize.isAccessibilitySize ? .tSubhead.weight(.semibold) : .system(size: 15, weight: .semibold))
+                .foregroundStyle(Color.ink)
                 + Text(" of \(SharedStore.totalPasses) left. Passes never refill.").foregroundStyle(Color.inkSecondary))
                 .font(.tSubhead)
+                .multilineTextAlignment(typeSize.isAccessibilitySize ? .center : .leading)
+                .fixedSize(horizontal: false, vertical: typeSize.isAccessibilitySize)
         }
     }
 
     private var holdButton: some View {
+        // Smaller at accessibility sizes, so every line on the screen fits whole.
+        let scale: CGFloat = typeSize.isAccessibilitySize ? 0.6 : 1
+        return holdRing
+            .scaleEffect(scale)
+            .frame(width: 248 * scale, height: 248 * scale)
+    }
+
+    private var holdRing: some View {
         ZStack {
             Circle()
                 .fill(Color.ember)

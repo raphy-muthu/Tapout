@@ -7,26 +7,25 @@ struct ActiveModeCard: View {
     let lockedThisWeek: TimeInterval
 
     @Environment(\.isLocked) private var isLocked
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
+        // At accessibility sizes the orb sits above the words and the tiles stack, so nothing wraps per letter.
+        let large = typeSize.isAccessibilitySize
         VStack(alignment: .leading, spacing: Space.lg) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: Space.xs) {
-                    HStack(spacing: Space.xxs) {
-                        if isLocked { Image(systemName: "lock").font(.system(size: 12, weight: .bold)) }
-                        Text(isLocked ? "Active now" : "Selected")
-                    }
-                    .font(.tCaption)
-                    .textCase(.uppercase)
-                    .tracking(0.4)
-                    .foregroundStyle(isLocked ? Color.emberInk : Color.slateInk)
-                    Text(mode.name).font(.tTitle1).foregroundStyle(Color.ink).lineLimit(1).minimumScaleFactor(0.8)
-                    Text(ModeText.subtitle(mode)).font(.tSubhead).foregroundStyle(Color.inkSecondary).lineLimit(1).minimumScaleFactor(0.85)
+            if large {
+                VStack(alignment: .leading, spacing: Space.md) {
+                    orb
+                    titles(large: true)
                 }
-                Spacer(minLength: Space.sm)
-                OrbView(tone: isLocked ? .ember : .slate, ring: isLocked ? 1 : 0, size: 104)
+            } else {
+                HStack(alignment: .top) {
+                    titles(large: false)
+                    Spacer(minLength: Space.sm)
+                    orb
+                }
             }
-            HStack(spacing: Space.xs) {
+            (large ? AnyLayout(VStackLayout(spacing: Space.xs)) : AnyLayout(HStackLayout(spacing: Space.xs))) {
                 StatTile(value: mode.schedule.map(ScheduleFormat.short) ?? "Manual", caption: "Schedule", isNumber: mode.schedule != nil)
                 StatTile(value: ModeText.unlockSummary(unlockNames), caption: "Unlocks at", isNumber: false)
                 StatTile(value: TimeFormat.short(lockedThisWeek), caption: "This week", isNumber: true)
@@ -34,6 +33,25 @@ struct ActiveModeCard: View {
             .fixedSize(horizontal: false, vertical: true) // tiles share a height: Fraunces numbers are taller than SF Pro words
         }
         .card(radius: Radius.sheet)
+    }
+
+    private var orb: some View {
+        OrbView(tone: isLocked ? .ember : .slate, ring: isLocked ? 1 : 0, size: 104)
+    }
+
+    private func titles(large: Bool) -> some View {
+        VStack(alignment: .leading, spacing: Space.xs) {
+            HStack(spacing: Space.xxs) {
+                if isLocked { Image(systemName: "lock").font(.system(size: 12, weight: .bold)) }
+                Text(isLocked ? "Active now" : "Selected")
+            }
+            .font(.tCaption)
+            .textCase(.uppercase)
+            .tracking(0.4)
+            .foregroundStyle(isLocked ? Color.emberInk : Color.slateInk)
+            Text(mode.name).font(.tTitle1).foregroundStyle(Color.ink).lineLimit(large ? nil : 1).minimumScaleFactor(0.8)
+            Text(ModeText.subtitle(mode)).font(.tSubhead).foregroundStyle(Color.inkSecondary).lineLimit(large ? nil : 1).minimumScaleFactor(0.85)
+        }
     }
 }
 
@@ -44,12 +62,14 @@ struct StatTile: View {
     /// Numbers use Fraunces; words use SF Pro.
     let isNumber: Bool
 
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(value)
                 .font(isNumber ? .numberTile : .tHeadline)
                 .foregroundStyle(Color.ink)
-                .lineLimit(1)
+                .lineLimit(typeSize.isAccessibilitySize ? nil : 1)
                 .minimumScaleFactor(0.7)
             Spacer(minLength: 0) // captions bottom-align across tiles whose values differ in height
             Text(caption).font(.caption).foregroundStyle(Color.inkTertiary)
@@ -65,11 +85,14 @@ struct StatTile: View {
 struct ModeTile: View {
     let mode: Mode
 
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     var body: some View {
         VStack(alignment: .leading, spacing: Space.sm) {
             OrbView(tone: .slate, size: 48)
             VStack(alignment: .leading, spacing: 2) {
-                Text(mode.name).font(.tHeadline).foregroundStyle(Color.ink).lineLimit(1).minimumScaleFactor(0.8)
+                Text(mode.name).font(.tHeadline).foregroundStyle(Color.ink)
+                    .lineLimit(typeSize.isAccessibilitySize ? nil : 1).minimumScaleFactor(0.8)
                 Text(ModeText.apps(mode)).font(.tFootnote).foregroundStyle(Color.inkSecondary)
             }
         }

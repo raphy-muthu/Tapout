@@ -11,6 +11,7 @@ struct HomeView: View {
     let onOpenSettings: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         VStack(spacing: 0) {
@@ -72,7 +73,8 @@ struct HomeView: View {
             Spacer(minLength: 0)
             VStack(spacing: 20) {
                 Button(action: onScan) {
-                    OrbView(tone: .ember, ring: 1, size: 244)
+                    // Smaller at accessibility sizes, so the intention and the pass link fit without truncating.
+                    OrbView(tone: .ember, ring: 1, size: typeSize.isAccessibilitySize ? 120 : 244)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Scan to unlock")
@@ -89,7 +91,9 @@ struct HomeView: View {
                         Text(intention)
                             .font(.tSubhead)
                             .foregroundStyle(Color.inkSecondary)
-                            .lineLimit(1)
+                            .lineLimit(typeSize.isAccessibilitySize ? 2 : 1)
+                            .multilineTextAlignment(typeSize.isAccessibilitySize ? .center : .leading)
+                            .fixedSize(horizontal: false, vertical: typeSize.isAccessibilitySize)
                             .lockMomentMatch(.intention)
                     }
                 }
@@ -100,6 +104,8 @@ struct HomeView: View {
                     Text("Emergency pass · \(controller.passesLeft) left")
                         .font(.tSubhead)
                         .foregroundStyle(Color.inkSecondary)
+                        .multilineTextAlignment(typeSize.isAccessibilitySize ? .center : .leading)
+                        .fixedSize(horizontal: false, vertical: typeSize.isAccessibilitySize)
                         .frame(minHeight: 44)
                         .contentShape(Rectangle())
                 }
@@ -114,7 +120,7 @@ struct HomeView: View {
             Spacer(minLength: 0)
             VStack(spacing: 20) {
                 OrbView(tone: .slate, ringTone: .ember,
-                        ring: controller.session.remainingFraction(at: date), size: 244)
+                        ring: controller.session.remainingFraction(at: date), size: typeSize.isAccessibilitySize ? 140 : 244)
                 VStack(spacing: Space.xxs) {
                     Text("Relocks in")
                         .font(.tSubhead)
@@ -124,6 +130,8 @@ struct HomeView: View {
                     Text("Emergency pass · \(controller.passesLeft) of \(MockLockController.totalPasses) left")
                         .font(.tFootnote.weight(.medium))
                         .foregroundStyle(Color.emberInk)
+                        .multilineTextAlignment(typeSize.isAccessibilitySize ? .center : .leading)
+                        .fixedSize(horizontal: false, vertical: typeSize.isAccessibilitySize)
                 }
             }
             Spacer(minLength: 0)

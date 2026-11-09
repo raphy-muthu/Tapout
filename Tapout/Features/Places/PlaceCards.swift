@@ -28,6 +28,8 @@ struct DefaultPlaceCard: View {
     let name: String
     let locks: Int
 
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     var body: some View {
         VStack(spacing: 20) {
             PlacePuck()
@@ -37,6 +39,7 @@ struct DefaultPlaceCard: View {
                     .font(.tSubhead)
                     .foregroundStyle(Color.inkSecondary)
             }
+            .multilineTextAlignment(typeSize.isAccessibilitySize ? .center : .leading) // wrapped lines stay centred
         }
         .frame(maxWidth: .infinity)
         .card(radius: Radius.sheet)
@@ -49,6 +52,8 @@ struct PlaceTile: View {
     let name: String
     let locks: Int
 
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     var body: some View {
         HStack(spacing: Space.sm) {
             Circle()
@@ -56,7 +61,8 @@ struct PlaceTile: View {
                 .frame(width: 44, height: 44)
                 .overlay { Circle().fill(Color.slateLine).frame(width: 8, height: 8) }
             VStack(alignment: .leading, spacing: 2) {
-                Text(name).font(.tHeadline).foregroundStyle(Color.ink).lineLimit(1).minimumScaleFactor(0.8)
+                Text(name).font(.tHeadline).foregroundStyle(Color.ink)
+                    .lineLimit(typeSize.isAccessibilitySize ? nil : 1).minimumScaleFactor(0.8)
                 Text(Copy.count(locks, "lock", "locks")).font(.tFootnote).foregroundStyle(Color.inkSecondary)
             }
         }
