@@ -24,6 +24,28 @@ struct EmergencyRelockTests {
         #expect(store.session == .locked(since: Self.relockAt))
     }
 
+    @Test func aCallbackFiveMinutesEarlyLeavesThePassOpen() {
+        let store = SharedStore.makeTest()
+        let shields = FakeShields()
+        let open = LockSession.emergency(relockAt: Self.relockAt, duration: 300)
+        store.session = open
+
+        #expect(EmergencyRelock.perform(store: store, shields: shields, now: Self.relockAt - 300) == nil)
+        #expect(store.session == open)
+        #expect(shields.applied == 0)
+    }
+
+    @Test func aClockSetBackRelocksAPassThatWouldStretch() {
+        let store = SharedStore.makeTest()
+        let shields = FakeShields()
+        store.session = .emergency(relockAt: Self.relockAt, duration: 300)
+
+        // Relock time is 301 s away, more than the 300 s pass is long.
+        #expect(EmergencyRelock.perform(store: store, shields: shields, now: Self.relockAt - 301) == -301)
+        #expect(store.session == .locked(since: Self.relockAt))
+        #expect(shields.applied == 1)
+    }
+
     @Test(arguments: [LockSession.unlocked, .locked(since: EmergencyRelockTests.relockAt)])
     func leavesOtherStatesAlone(_ session: LockSession) {
         let store = SharedStore.makeTest()

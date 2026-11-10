@@ -20,6 +20,19 @@ enum ScreenTimeAccess {
         var offersSettings: Bool { self == .declined }
     }
 
+    /// Whether Tapout may shield apps right now; access can be turned off in Settings at any time.
+    /// The simulator counts as approved, unless launched with -mockScreenTimeRevoked.
+    @MainActor static var isApproved: Bool {
+        #if targetEnvironment(simulator)
+        return !ProcessInfo.processInfo.arguments.contains("-mockScreenTimeRevoked")
+        #else
+        let status = AuthorizationCenter.shared.authorizationStatus
+        if status == .approved { return true }
+        if #available(iOS 26.4, *) { return status == .approvedWithDataAccess }
+        return false
+        #endif
+    }
+
     /// The simulator can't grant access, so there it continues, unless launched with -mockScreenTimeDenied.
     @MainActor static func request() async -> Outcome {
         #if targetEnvironment(simulator)

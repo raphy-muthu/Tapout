@@ -12,13 +12,26 @@ extension SharedStore {
     }
 }
 
-/// Counts shield calls instead of touching Screen Time.
+/// Records shield calls instead of touching Screen Time.
 final class FakeShields: Shielding {
-    private(set) var applied = 0
+    private(set) var plans: [ShieldPlan] = []
     private(set) var cleared = 0
+    /// Called at the start of `apply` / `clear`, before the call is recorded, so a test can see what
+    /// the store held at that moment. Tests run on the main actor.
+    var onApply: (@MainActor () -> Void)?
+    var onClear: (@MainActor () -> Void)?
 
-    func apply(_ selection: FamilyActivitySelection) { applied += 1 }
-    func clear() { cleared += 1 }
+    var applied: Int { plans.count }
+
+    func apply(_ plan: ShieldPlan) {
+        if let onApply { MainActor.assumeIsolated { onApply() } }
+        plans.append(plan)
+    }
+
+    func clear() {
+        if let onClear { MainActor.assumeIsolated { onClear() } }
+        cleared += 1
+    }
 }
 
 /// Records relock schedules instead of calling DeviceActivity.
@@ -30,6 +43,8 @@ final class FakeRelock: RelockScheduling {
     }
 
     var failure: (any Error)?
+    /// Called at the start of `cancel`; see `FakeShields.onApply`.
+    var onCancel: (@MainActor () -> Void)?
     private(set) var scheduled: [Call] = []
     private(set) var cancelled = 0
 
@@ -38,7 +53,10 @@ final class FakeRelock: RelockScheduling {
         scheduled.append(Call(relockAt: relockAt, now: now, strategy: strategy))
     }
 
-    func cancel() { cancelled += 1 }
+    func cancel() {
+        if let onCancel { MainActor.assumeIsolated { onCancel() } }
+        cancelled += 1
+    }
 
     func scheduledSummary() -> String { "fake schedule" }
 }

@@ -23,4 +23,8 @@ struct ScreenTimeAccessTests {
         #expect(!ScreenTimeAccess.Outcome.noConnection.offersSettings)
         #expect(!ScreenTimeAccess.Outcome.unavailable.offersSettings)
     }
+
+    @MainActor @Test func theSimulatorCountsAsApproved() {
+        #expect(ScreenTimeAccess.isApproved)
+    }
 }

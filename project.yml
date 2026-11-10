@@ -22,6 +22,7 @@ targets:
       - path: Shared
     dependencies:
       - target: TapoutMonitor
+      - target: TapoutShield
     info:
       path: Tapout/Info.plist
       properties:
@@ -91,6 +92,27 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.raphymuthu.tapout.monitor
+        TARGETED_DEVICE_FAMILY: "1"
+  TapoutShield:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: TapoutShield
+      - path: Tapout/DesignSystem/Colors.xcassets
+    info:
+      path: TapoutShield/Info.plist
+      properties:
+        CFBundleDisplayName: Tapout Shield
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.ManagedSettingsUI.shield-configuration-service
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShieldConfigurationExtension
+    entitlements:
+      path: TapoutShield/TapoutShield.entitlements
+      properties:
+        com.apple.developer.family-controls: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.raphymuthu.tapout.shield
         TARGETED_DEVICE_FAMILY: "1"
 schemes:
   Tapout:

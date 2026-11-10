@@ -112,4 +112,13 @@ struct InsightsTests {
         let history = [lock(oct(24, 9), 30), lock(oct(26, 9), 30), lock(oct(27, 9), 30)]
         #expect(Insights.streak(history: history, now: oct(28, 8), calendar: calendar) == 2)
     }
+
+    @Test func passTimeIsNotPhoneFree() {
+        let start = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let lock = LockRecord(start: start, end: start + 3600, placeUID: nil, modeID: UUID(),
+                              passes: [DateInterval(start: start + 600, duration: 300)])
+        #expect(Insights.totalLocked(history: [lock], now: start + 7200) == 3300)
+        #expect(Insights.lockedTime(in: DateInterval(start: start, end: start + 3600), history: [lock], now: start + 7200) == 3300)
+        #expect(Insights.longest(weekOf: start, history: [lock], calendar: .current) == 3300)
+    }
 }

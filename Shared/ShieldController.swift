@@ -1,9 +1,9 @@
 import FamilyControls
 import ManagedSettings
 
-/// Puts the chosen apps behind a shield, or takes it away.
+/// Puts the planned apps behind a shield, or takes it away.
 protocol Shielding {
-    func apply(_ selection: FamilyActivitySelection)
+    func apply(_ plan: ShieldPlan)
     func clear()
 }
 
@@ -15,14 +15,12 @@ extension ManagedSettingsStore.Name {
 struct ShieldController: Shielding {
     private let store = ManagedSettingsStore(named: .tapout)
 
-    func apply(_ selection: FamilyActivitySelection) {
-        let apps = selection.applicationTokens
-        let categories = selection.categoryTokens
-        let sites = selection.webDomainTokens
-        store.shield.applications = apps.isEmpty ? nil : apps
-        store.shield.applicationCategories = categories.isEmpty ? nil : .specific(categories)
-        store.shield.webDomains = sites.isEmpty ? nil : sites
-        store.shield.webDomainCategories = categories.isEmpty ? nil : .specific(categories)
+    func apply(_ plan: ShieldPlan) {
+        let categories = plan.categories
+        store.shield.applications = plan.applications.isEmpty ? nil : plan.applications
+        store.shield.applicationCategories = categories.isEmpty ? nil : .specific(categories, except: plan.allowedApplications)
+        store.shield.webDomains = plan.webDomains.isEmpty ? nil : plan.webDomains
+        store.shield.webDomainCategories = categories.isEmpty ? nil : .specific(categories, except: plan.allowedWebDomains)
     }
 
     func clear() {

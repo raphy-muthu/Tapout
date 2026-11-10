@@ -136,7 +136,8 @@ struct OnboardingView: View {
 }
 
 /// A step keeps its own layout while it fits. At the largest text sizes it scrolls, so the CTA stays on screen.
-private struct ScrollsWhenTall<Content: View>: View {
+/// Scrolls only when the content is taller than the space, as at the largest text sizes.
+struct ScrollsWhenTall<Content: View>: View {
     @ViewBuilder let content: Content
 
     var body: some View {

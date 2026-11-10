@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Home in its three states, matching design/screens/Home.dc.html, plus the optional lock intention.
 struct HomeView: View {
-    let controller: MockLockController
+    let engine: LockEngine
     let model: AppModel
     @Binding var intentionDraft: String
     /// Reads a tag to lock or unlock. The locked orb uses it too: tap the orb, then the tag.
@@ -23,7 +23,7 @@ struct HomeView: View {
                 onOpenSettings: onOpenSettings
             )
             TimelineView(.periodic(from: .now, by: 0.5)) { context in
-                switch controller.session {
+                switch engine.session {
                 case .unlocked: unlocked
                 case .locked: locked(at: context.date)
                 case .emergency: emergency(at: context.date)
@@ -35,7 +35,7 @@ struct HomeView: View {
     }
 
     private var isLocked: Bool {
-        if case .locked = controller.session { true } else { false }
+        if case .locked = engine.session { true } else { false }
     }
 
     private var unlocked: some View {
@@ -68,7 +68,8 @@ struct HomeView: View {
     }
 
     private func locked(at date: Date) -> some View {
-        let elapsed = controller.session.elapsed(at: date)
+        // Without pass time. The record can be a moment behind the lock state at launch, and previews have none.
+        let elapsed = model.runningLockTime(at: date) ?? engine.session.elapsed(at: date)
         return VStack(spacing: 0) {
             Spacer(minLength: 0)
             VStack(spacing: 20) {
@@ -99,9 +100,9 @@ struct HomeView: View {
                 }
             }
             Spacer(minLength: 0)
-            if controller.passesLeft > 0 {
+            if engine.passesLeft > 0 {
                 Button(action: onEmergencyPass) {
-                    Text("Emergency pass · \(controller.passesLeft) left")
+                    Text("Emergency pass · \(engine.passesLeft) left")
                         .font(.tSubhead)
                         .foregroundStyle(Color.inkSecondary)
                         .multilineTextAlignment(typeSize.isAccessibilitySize ? .center : .leading)
@@ -115,19 +116,19 @@ struct HomeView: View {
     }
 
     private func emergency(at date: Date) -> some View {
-        let remaining = controller.session.remaining(at: date)
+        let remaining = engine.session.remaining(at: date)
         return VStack(spacing: 0) {
             Spacer(minLength: 0)
             VStack(spacing: 20) {
                 OrbView(tone: .slate, ringTone: .ember,
-                        ring: controller.session.remainingFraction(at: date), size: typeSize.isAccessibilitySize ? 140 : 244)
+                        ring: engine.session.remainingFraction(at: date), size: typeSize.isAccessibilitySize ? 140 : 244)
                 VStack(spacing: Space.xxs) {
                     Text("Relocks in")
                         .font(.tSubhead)
                         .foregroundStyle(Color.inkSecondary)
                     TimerText(text: TimeFormat.clock(remaining.rounded(.up)))
                         .accessibilityLabel("Relocks in \(TimeFormat.spoken(remaining))")
-                    Text("Emergency pass · \(controller.passesLeft) of \(MockLockController.totalPasses) left")
+                    Text("Emergency pass · \(engine.passesLeft) of \(SharedStore.totalPasses) left")
                         .font(.tFootnote.weight(.medium))
                         .foregroundStyle(Color.emberInk)
                         .multilineTextAlignment(typeSize.isAccessibilitySize ? .center : .leading)
@@ -141,7 +142,8 @@ struct HomeView: View {
 
     private func relockNow() {
         Haptics.lock()
-        withAnimation(reduceMotion ? Motion.lockReduced : Motion.lock) { controller.relockNow() }
+        withAnimation(reduceMotion ? Motion.lockReduced : Motion.lock) { engine.relockNow() }
+        model.endPass()
     }
 }
 
@@ -154,36 +156,39 @@ private extension RootView {
     }
 }
 
+// The previews use DEBUG-only LockEngine.preview.
+#if DEBUG
 #Preview("Unlocked · dark") {
-    RootView(model: DemoData.previewModel()).onboardedForPreview().preferredColorScheme(.dark)
+    RootView(engine: .preview(), model: DemoData.previewModel()).onboardedForPreview().preferredColorScheme(.dark)
 }
 
 #Preview("Locked · dark") {
-    RootView(controller: MockLockController(session: .locked(since: .now - (47 * 60 + 12)), passesLeft: 3), model: DemoData.previewModel())
+    RootView(engine: .preview(session: .locked(since: .now - (47 * 60 + 12)), passesLeft: 3), model: DemoData.previewModel())
         .onboardedForPreview()
         .preferredColorScheme(.dark)
 }
 
 #Preview("Emergency · dark") {
-    RootView(controller: MockLockController(session: .emergency(relockAt: .now + 272, duration: 300), passesLeft: 2),
+    RootView(engine: .preview(session: .emergency(relockAt: .now + 272, duration: 300), passesLeft: 2),
              model: DemoData.previewModel())
         .onboardedForPreview()
         .preferredColorScheme(.dark)
 }
 
 #Preview("Unlocked · light") {
-    RootView(model: DemoData.previewModel()).onboardedForPreview().preferredColorScheme(.light)
+    RootView(engine: .preview(), model: DemoData.previewModel()).onboardedForPreview().preferredColorScheme(.light)
 }
 
 #Preview("Locked · light") {
-    RootView(controller: MockLockController(session: .locked(since: .now - (47 * 60 + 12)), passesLeft: 3), model: DemoData.previewModel())
+    RootView(engine: .preview(session: .locked(since: .now - (47 * 60 + 12)), passesLeft: 3), model: DemoData.previewModel())
         .onboardedForPreview()
         .preferredColorScheme(.light)
 }
 
 #Preview("Emergency · light") {
-    RootView(controller: MockLockController(session: .emergency(relockAt: .now + 272, duration: 300), passesLeft: 2),
+    RootView(engine: .preview(session: .emergency(relockAt: .now + 272, duration: 300), passesLeft: 2),
              model: DemoData.previewModel())
         .onboardedForPreview()
         .preferredColorScheme(.light)
 }
+#endif

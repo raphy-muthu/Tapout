@@ -78,17 +78,17 @@ struct AppModelLockTests {
     /// A pass opens apps for a while, but the lock is still the same lock.
     @Test func aPassAndARelockKeepTheOriginalRecord() throws {
         let model = pairedModel()
-        let controller = MockLockController(now: { [clock] in clock.now })
+        let controller = LockEngine(store: store, shields: NoShields(), relock: NoRelock(), now: { [clock] in clock.now })
         let start = clock.now
-        controller.simulateTagRead()
+        controller.lock()
         model.startLock(placeUID: kitchen, intention: "Essay")
         clock.now += 600
-        controller.useEmergencyPass()
-        clock.now += MockLockController.emergencyDuration
+        try controller.useEmergencyPass()
+        clock.now += LockEngine.emergencyDuration
         controller.tick()
         #expect(controller.session == .locked(since: clock.now))
         clock.now += 600
-        controller.simulateTagRead()
+        controller.unlock()
         let finished = try #require(model.finishLock())
         #expect(finished.start == start)
         #expect(finished.intention == "Essay")
@@ -191,5 +191,118 @@ struct AppModelLockTests {
         #expect(model.activeMode.schedule == schedule)
         #expect(model.interests == [.sports, .music])
         #expect(store.interests == [.sports, .music])
+    }
+
+    @Test func aPassIsNotedInTheRunningLock() throws {
+        let model = pairedModel()
+        model.startLock(placeUID: kitchen, intention: nil)
+        let start = clock.now
+        clock.now += 600
+        model.startPass(until: clock.now + 300)
+        #expect(try #require(model.history.last).passes == [DateInterval(start: start + 600, duration: 300)])
+    }
+
+    @Test func relockingEarlyEndsThePass() throws {
+        let model = pairedModel()
+        model.startLock(placeUID: kitchen, intention: nil)
+        let passStart = clock.now
+        model.startPass(until: passStart + 300)
+        clock.now += 60
+        model.endPass()
+        #expect(try #require(model.history.last).passes == [DateInterval(start: passStart, duration: 60)])
+    }
+
+    @Test func unlockingDuringAPassEndsIt() throws {
+        let model = pairedModel()
+        model.startLock(placeUID: kitchen, intention: nil)
+        model.startPass(until: clock.now + 300)
+        clock.now += 100
+        let record = try #require(model.finishLock())
+        #expect(record.passes.first?.duration == 100)
+        #expect(record.end == clock.now)
+    }
+
+    @Test func runningLockTimeLeavesOutThePass() {
+        let model = pairedModel()
+        #expect(model.runningLockTime(at: clock.now) == nil)
+        model.startLock(placeUID: kitchen, intention: nil)
+        clock.now += 600
+        model.startPass(until: clock.now + 300)
+        clock.now += 900
+        #expect(model.runningLockTime(at: clock.now) == 1200)
+    }
+
+    @Test func reconcileWhileUnlockedDropsAnOpenRecord() {
+        let model = pairedModel()
+        model.startLock(placeUID: kitchen, intention: "Essay")
+        model.reconcile(with: .unlocked)
+        #expect(model.history.isEmpty)
+        #expect(model.currentIntention == nil)
+    }
+
+    @Test func reconcileAddsARecordForALockWithoutOne() {
+        let model = pairedModel()
+        let since = clock.now - 600
+        model.reconcile(with: .locked(since: since))
+        #expect(model.history == [LockRecord(start: since, end: nil, placeUID: nil, modeID: model.activeMode.id)])
+    }
+
+    @Test func reconcileAddsTheOpenPassToo() throws {
+        let model = pairedModel()
+        let relockAt = clock.now + 200
+        model.reconcile(with: .emergency(relockAt: relockAt, duration: 300))
+        let record = try #require(model.history.last)
+        #expect(record.start == relockAt - 300)
+        #expect(record.passes == [DateInterval(start: relockAt - 300, end: relockAt)])
+    }
+
+    @Test func reconcileKeepsARunningRecord() {
+        let model = pairedModel()
+        model.startLock(placeUID: kitchen, intention: nil)
+        model.reconcile(with: .locked(since: clock.now - 9999))
+        #expect(model.history.count == 1)
+        #expect(model.history.first?.start == clock.now)
+    }
+
+    @Test func aNewPassEndsAnOpenOneFirst() throws {
+        let model = pairedModel()
+        model.startLock(placeUID: kitchen, intention: nil)
+        let first = clock.now
+        model.startPass(until: clock.now + 300)
+        clock.now += 60
+        let second = clock.now
+        model.startPass(until: clock.now + 300)
+        let passes = try #require(model.history.last).passes
+        #expect(passes == [DateInterval(start: first, end: second), DateInterval(start: second, end: second + 300)])
+        #expect(passes[0].end <= passes[1].start)
+    }
+
+    @Test func reconcileAddsAPassTheAppMissed() throws {
+        let model = pairedModel()
+        model.startLock(placeUID: kitchen, intention: nil)
+        clock.now += 600
+        model.reconcile(with: .emergency(relockAt: clock.now + 300, duration: 300))
+        #expect(model.history.count == 1)
+        #expect(try #require(model.history.last).passes == [DateInterval(start: clock.now, end: clock.now + 300)])
+    }
+
+    @Test func reconcileEndsAPassRelockedEarly() throws {
+        let model = pairedModel()
+        model.startLock(placeUID: kitchen, intention: nil)
+        model.startPass(until: clock.now + 300)
+        clock.now += 60
+        model.reconcile(with: .locked(since: clock.now))
+        #expect(try #require(model.history.last).passes.first?.duration == 60)
+    }
+
+    @Test func reconcileKeepsOnlyTheNewestOpenRecord() {
+        let model = pairedModel()
+        let older = LockRecord(start: clock.now - 1000, end: nil, placeUID: nil, modeID: model.activeMode.id)
+        let newer = LockRecord(start: clock.now - 500, end: nil, placeUID: nil, modeID: model.activeMode.id)
+        store.lockHistory = [older, newer]
+        model.reconcile(with: .locked(since: clock.now - 500))
+        let open = model.history.filter { $0.end == nil }
+        #expect(open.count == 1)
+        #expect(open.first?.start == newer.start)
     }
 }

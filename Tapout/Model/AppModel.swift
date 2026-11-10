@@ -216,8 +216,8 @@ final class AppModel {
         return allowed.isEmpty ? places : places.filter { allowed.contains($0.uid) }
     }
 
-    /// Drops locks left open by a crash: nobody knows how long they really ran, so they don't count.
-    /// Lock state isn't persisted yet, so an open record at launch can only be a stale one.
+    /// Drops locks left open while the lock state says unlocked: nobody knows how long they really
+    /// ran, so they don't count. `reconcile(with:)` calls this at launch; `startLock` calls it too.
     func discardInterruptedLocks() {
         guard store.lockHistory.contains(where: { $0.end == nil }) || store.currentIntention != nil else { return }
         store.lockHistory.removeAll { $0.end == nil }
@@ -248,6 +248,7 @@ final class AppModel {
             }
             return nil
         }
+        all[index].endPass(at: now())
         all[index].end = now()
         store.lockHistory = all
         store.currentIntention = nil
@@ -262,6 +263,76 @@ final class AppModel {
             if record.start == start, record.intention != nil { record.intentionDone = done }
             return record
         }
+        reload()
+    }
+
+    // MARK: Emergency passes
+
+    /// Notes an emergency pass in the running lock, from now until `relockAt`.
+    /// An earlier pass that is still open ends first, so passes never overlap.
+    func startPass(until relockAt: Date) {
+        let start = now()
+        var all = store.lockHistory
+        guard let index = all.lastIndex(where: { $0.end == nil }), relockAt > start else { return }
+        all[index].endPass(at: start)
+        all[index].passes.append(DateInterval(start: start, end: relockAt))
+        store.lockHistory = all
+        reload()
+    }
+
+    /// Ends the running pass now, for Relock now.
+    func endPass() {
+        var all = store.lockHistory
+        guard let index = all.lastIndex(where: { $0.end == nil }) else { return }
+        all[index].endPass(at: now())
+        store.lockHistory = all
+        reload()
+    }
+
+    /// Locked time of the running lock without pass time, for Home's timer. nil when none runs.
+    func runningLockTime(at date: Date) -> TimeInterval? {
+        history.last { $0.end == nil }?.lockedTime(now: date)
+    }
+
+    /// Matches the history to the lock state at launch. The lock state wins: shields follow it,
+    /// it survives quitting, and the monitor can relock while Tapout is closed.
+    func reconcile(with session: LockSession) {
+        if case .unlocked = session {
+            discardInterruptedLocks()
+            return
+        }
+        var all = store.lockHistory
+        // More than one open record is left over from a crash. Keep the newest.
+        if let keep = all.lastIndex(where: { $0.end == nil }) {
+            all = all.enumerated().filter { $0.offset == keep || $0.element.end != nil }.map(\.element)
+        }
+        let index = all.lastIndex(where: { $0.end == nil })
+        switch session {
+        case .unlocked:
+            break
+        case .locked(let since):
+            if let index {
+                // Ends a pass that was relocked early. No change for a normal relock.
+                all[index].endPass(at: since)
+            } else {
+                all.append(LockRecord(start: since, end: nil, placeUID: nil, modeID: activeMode.id))
+            }
+        case .emergency(let relockAt, let duration):
+            if let index {
+                if all[index].passes.last?.end != relockAt {
+                    let start = max(all[index].start, relockAt - duration)
+                    if start < relockAt {
+                        all[index].endPass(at: start) // no overlap with an earlier pass
+                        all[index].passes.append(DateInterval(start: start, end: relockAt))
+                    }
+                }
+            } else {
+                let start = relockAt - duration
+                all.append(LockRecord(start: start, end: nil, placeUID: nil, modeID: activeMode.id,
+                                      passes: [DateInterval(start: start, end: relockAt)]))
+            }
+        }
+        store.lockHistory = all
         reload()
     }
 

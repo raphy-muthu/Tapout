@@ -54,12 +54,6 @@ final class SharedStore {
         set { write(newValue, .session) }
     }
 
-    /// The apps, categories and sites to shield. Opaque tokens; never leaves the device.
-    var selection: FamilyActivitySelection {
-        get { read(.selection, absent: FamilyActivitySelection(), corrupt: FamilyActivitySelection()) }
-        set { write(newValue, .selection) }
-    }
-
     var pairedTags: [PairedTag] {
         get { read(.pairedTags, absent: [], corrupt: []) }
         set { write(newValue, .pairedTags) }
@@ -135,7 +129,7 @@ final class SharedStore {
     }
 
     private enum Key: String {
-        case session, selection, pairedTags, passesLeft, relockStrategy, log
+        case session, pairedTags, passesLeft, relockStrategy, log
         case modes, activeModeID, defaultPlace, lockHistory, alwaysAllowed
         case currentIntention, interests, seenMilestones
     }

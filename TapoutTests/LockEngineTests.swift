@@ -1,7 +1,11 @@
-import FamilyControls
 import Foundation
 import Testing
 @testable import Tapout
+
+private struct FailingVault: PassCounting {
+    func used() -> Int { 0 }
+    func setUsed(_ count: Int) -> Bool { false }
+}
 
 @MainActor
 struct LockEngineTests {
@@ -13,17 +17,64 @@ struct LockEngineTests {
     private let store = SharedStore.makeTest()
     private let shields = FakeShields()
     private let relock = FakeRelock()
-    private let tag = TagUID(hex: "04A20F1B")
+    private let vault = MemoryPassVault()
 
     private func makeEngine() -> LockEngine {
-        LockEngine(store: store, shields: shields, relock: relock, now: { [clock] in clock.now })
+        LockEngine(store: store, shields: shields, relock: relock, passes: vault, now: { [clock] in clock.now })
     }
 
     private func lockedEngine() -> LockEngine {
         let engine = makeEngine()
-        engine.pair(tag, name: "Desk")
-        _ = engine.handleTag(tag)
+        engine.lock()
         return engine
+    }
+
+    @Test func theKeychainCountWinsWhenTheStoreForgets() {
+        vault.setUsed(2)
+        #expect(makeEngine().passesLeft == 3)
+    }
+
+    @Test func theStoreCountWinsWhenTheKeychainForgets() {
+        store.passesLeft = 1
+        #expect(makeEngine().passesLeft == 1)
+    }
+
+    @Test func spendingAPassWritesBoth() throws {
+        let engine = lockedEngine()
+        try engine.useEmergencyPass()
+        #expect(store.passesLeft == 4)
+        #expect(vault.used() == 1)
+    }
+
+    @Test func noPassWhenTheKeychainSaysAllAreSpent() {
+        vault.setUsed(5)
+        let engine = lockedEngine()
+        #expect(throws: LockEngine.PassError.noPassesLeft) { try engine.useEmergencyPass() }
+    }
+
+    @Test func spendingCountsFromTheLowerCopy() throws {
+        vault.setUsed(3)
+        let engine = lockedEngine()
+        try engine.useEmergencyPass()
+        #expect(store.passesLeft == 1)
+        #expect(vault.used() == 4)
+    }
+
+    @Test func aFailedKeychainWriteIsLoggedButStillSpends() throws {
+        let failing = FailingVault()
+        let engine = LockEngine(store: store, shields: shields, relock: relock, passes: failing, now: { [clock] in clock.now })
+        engine.lock()
+        try engine.useEmergencyPass()
+        #expect(engine.log.map(\.message).contains("Keychain write failed"))
+        #expect(store.passesLeft == 4)
+    }
+
+    @Test func aFailedScheduleWritesNeither() {
+        let engine = lockedEngine()
+        relock.failure = FakeError()
+        _ = try? engine.useEmergencyPass()
+        #expect(store.passesLeft == 5)
+        #expect(vault.used() == 0)
     }
 
     @Test func freshEngineIsUnlockedWithFivePasses() {
@@ -32,40 +83,39 @@ struct LockEngineTests {
         #expect(engine.passesLeft == 5)
     }
 
-    @Test func pairingTheSameTagTwiceIsRefused() {
-        let engine = makeEngine()
-        #expect(engine.pair(tag, name: "Desk"))
-        #expect(!engine.pair(tag, name: "Desk again"))
-        #expect(engine.pairedTags.count == 1)
-    }
-
-    @Test func unknownTagIsRejectedAndChangesNothing() {
-        let engine = makeEngine()
-        engine.pair(tag, name: "Desk")
-        #expect(engine.handleTag(TagUID(hex: "FFFF")) == .rejected)
-        #expect(engine.session == .unlocked)
-        #expect(shields.applied == 0)
-    }
-
-    @Test func pairedTagLocksAndShields() {
-        let engine = makeEngine()
-        engine.pair(tag, name: "Desk")
-        #expect(engine.handleTag(tag) == .locked)
+    @Test func lockShieldsTheActivePlanAndStartsTheLock() {
+        let engine = lockedEngine()
         #expect(engine.session == .locked(since: clock.now))
+        #expect(shields.plans == [store.activeShieldPlan])
+    }
+
+    @Test func lockingAgainChangesNothing() {
+        let engine = lockedEngine()
+        let since = clock.now
+        clock.now += 60
+        engine.lock()
+        #expect(engine.session == .locked(since: since))
         #expect(shields.applied == 1)
     }
 
-    @Test func pairedTagUnlocksAndClearsEverything() {
+    @Test func unlockClearsEverything() {
         let engine = lockedEngine()
-        #expect(engine.handleTag(tag) == .unlocked)
+        engine.unlock()
         #expect(engine.session == .unlocked)
         #expect(shields.cleared == 1)
         #expect(relock.cancelled == 1)
     }
 
+    @Test func unlockingWhileUnlockedChangesNothing() {
+        makeEngine().unlock()
+        #expect(shields.cleared == 0)
+        #expect(relock.cancelled == 0)
+    }
+
     @Test func emergencyPassSpendsOneOpensAppsAndSchedulesRelock() throws {
         let engine = lockedEngine()
-        try engine.useEmergencyPass()
+        let relockAt = try engine.useEmergencyPass()
+        #expect(relockAt == clock.now + 300)
         #expect(engine.passesLeft == 4)
         #expect(shields.cleared == 1)
         #expect(engine.session == .emergency(relockAt: clock.now + 300, duration: 300))
@@ -138,28 +188,74 @@ struct LockEngineTests {
         #expect(engine.session == .locked(since: relockAt))
     }
 
-    @Test func tagDuringAPassUnlocks() throws {
+    @Test func unlockingDuringAPassCancelsTheRelock() throws {
         let engine = lockedEngine()
         try engine.useEmergencyPass()
-        #expect(engine.handleTag(tag) == .unlocked)
+        engine.unlock()
+        #expect(engine.session == .unlocked)
         #expect(relock.cancelled == 1)
     }
 
-    @Test func changingAppsWhileLockedReshields() {
+    @Test func syncShieldsPutsASurvivingLockBack() {
+        store.session = .locked(since: clock.now)
+        makeEngine().syncShields()
+        #expect(shields.plans == [store.activeShieldPlan])
+    }
+
+    @Test func syncShieldsClearsWhenUnlocked() {
+        makeEngine().syncShields()
+        #expect(shields.cleared == 1)
+    }
+
+    @Test func syncShieldsOpensAPaidPass() {
+        store.session = .emergency(relockAt: clock.now + 100, duration: 300)
+        makeEngine().syncShields()
+        #expect(shields.cleared == 1)
+        #expect(shields.applied == 0)
+    }
+
+    @Test func syncShieldsRelocksAnExpiredPass() {
+        let relockAt = clock.now - 10
+        store.session = .emergency(relockAt: relockAt, duration: 300)
+        makeEngine().syncShields()
+        #expect(store.session == .locked(since: relockAt))
+        #expect(shields.applied == 1)
+    }
+
+    @Test func lockWritesTheLockBeforeShielding() {
+        var seen: LockSession?
+        shields.onApply = { [store] in seen = store.session }
+        makeEngine().lock()
+        #expect(seen == .locked(since: clock.now))
+    }
+
+    @Test func unlockCancelsTheRelockLast() throws {
         let engine = lockedEngine()
-        engine.updateSelection(FamilyActivitySelection())
-        #expect(shields.applied == 2)
+        try engine.useEmergencyPass()
+        var seen: LockSession?
+        relock.onCancel = { [store] in seen = store.session }
+        engine.unlock()
+        #expect(seen == .unlocked)
+    }
+
+    @Test func relockNowCancelsTheRelockLast() throws {
+        let engine = lockedEngine()
+        try engine.useEmergencyPass()
+        clock.now += 60
+        var seen: LockSession?
+        relock.onCancel = { [store] in seen = store.session }
+        engine.relockNow()
+        #expect(seen == .locked(since: clock.now))
     }
 
     @Test func stateSurvivesANewEngine() {
         _ = lockedEngine()
-        let second = makeEngine()
-        #expect(second.session == .locked(since: clock.now))
-        #expect(second.pairedTags.count == 1)
+        #expect(makeEngine().session == .locked(since: clock.now))
     }
 
     @Test func actionsAreLogged() {
         let engine = lockedEngine()
-        #expect(engine.log.map(\.message) == ["Paired Desk (04:A2:0F:1B)", "Locked with Desk"])
+        engine.unlock()
+        #expect(engine.log.map(\.message) == ["Locked", "Unlocked"])
     }
 }

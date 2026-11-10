@@ -47,19 +47,14 @@ enum Insights {
         let answered: Int
     }
 
-    /// Locked time inside `interval`. A running lock counts up to `now`.
+    /// Locked time inside `interval`, without pass time. A running lock counts up to `now`.
     static func lockedTime(in interval: DateInterval, history: [LockRecord], now: Date) -> TimeInterval {
-        history.reduce(0) { total, record in
-            let end = min(record.end ?? now, now)
-            guard end > record.start,
-                  let overlap = DateInterval(start: record.start, end: end).intersection(with: interval) else { return total }
-            return total + overlap.duration
-        }
+        history.reduce(0) { $0 + $1.lockedTime(in: interval, now: now) }
     }
 
-    /// All locked time so far.
+    /// All locked time so far, without pass time.
     static func totalLocked(history: [LockRecord], now: Date) -> TimeInterval {
-        history.reduce(0) { $0 + max(0, min($1.end ?? now, now).timeIntervalSince($1.start)) }
+        history.reduce(0) { $0 + $1.lockedTime(now: now) }
     }
 
     static func week(of date: Date, calendar: Calendar) -> DateInterval {
@@ -86,10 +81,10 @@ enum Insights {
         finished(in: week(of: date, calendar: calendar), history: history).count
     }
 
-    /// The longest finished lock this week; nil before the first one.
+    /// The longest finished lock this week, without pass time; nil before the first one.
     static func longest(weekOf date: Date, history: [LockRecord], calendar: Calendar) -> TimeInterval? {
         finished(in: week(of: date, calendar: calendar), history: history)
-            .compactMap { record in record.end.map { $0.timeIntervalSince(record.start) } }
+            .map { $0.lockedTime(now: .distantFuture) }
             .max()
     }
 

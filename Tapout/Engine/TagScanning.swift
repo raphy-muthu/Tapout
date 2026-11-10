@@ -16,17 +16,18 @@ extension TagReader: TagScanning {
 }
 
 enum TagScanners {
-    /// The NFC reader, or in DEBUG builds without NFC (the simulator) a stand-in that finds `known`,
-    /// or a new tag when `known` is nil.
+    /// The NFC reader, or in the simulator a stand-in that finds `known`, or a new tag when `known` is nil.
+    /// Simulator only: a Debug build on an iPhone never unlocks without a real tag.
     @MainActor static func live(known: TagUID? = nil) -> any TagScanning {
-        #if DEBUG
-        if !TagReader.isAvailable { return MockTagScanner(known: known) }
-        #endif
+        #if targetEnvironment(simulator)
+        return MockTagScanner(known: known)
+        #else
         return TagReader()
+        #endif
     }
 }
 
-#if DEBUG
+#if targetEnvironment(simulator)
 /// Simulator stand-in. Finds `known` after a second, or a new random tag when `known` is nil
 /// or the app was launched with `-mockUnknownTag`.
 struct MockTagScanner: TagScanning {

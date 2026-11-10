@@ -33,8 +33,9 @@ final class TapoutMonitor: DeviceActivityMonitor {
             Self.logger.info("\(callback, privacy: .public) \(activity.rawValue, privacy: .public) at \(time, privacy: .public): relocked, \(Int(late), privacy: .public)s late")
             store.appendLog("\(callback): relocked, \(Int(late))s after relock time", source: .monitor, at: now)
         } else {
-            Self.logger.info("\(callback, privacy: .public) \(activity.rawValue, privacy: .public) at \(time, privacy: .public): nothing to relock")
-            store.appendLog("\(callback): nothing to relock", source: .monitor, at: now)
+            let reason = if case .emergency = store.session { "not due yet" } else { "nothing to relock" }
+            Self.logger.info("\(callback, privacy: .public) \(activity.rawValue, privacy: .public) at \(time, privacy: .public): \(reason, privacy: .public)")
+            store.appendLog("\(callback): \(reason)", source: .monitor, at: now)
         }
     }
 }

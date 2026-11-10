@@ -41,7 +41,7 @@ struct EmergencyPassView: View {
                     Text(passesAtOpen > 0 ? countdown.title : "No passes left.")
                         .font(.tTitle)
                         .foregroundStyle(Color.ink)
-                    Text("Apps open for \(Int(MockLockController.emergencyDuration / 60)) min, then relock.")
+                    Text("Apps open for \(Int(LockEngine.emergencyDuration / 60)) min, then relock.")
                         .font(.tSubhead)
                         .foregroundStyle(Color.inkSecondary)
                 }

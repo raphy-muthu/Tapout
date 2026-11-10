@@ -1674,18 +1674,20 @@ In `Tapout/App/RootView.swift`:
 
 ### Task 9: Verify
 
-- [ ] **Step 1:** Run the build/test command, the device compile check, and the device check with `-configuration Release -derivedDataPath <scratch>`. Expected: 190 tests, no warnings from `Tapout/`, `Shared/`, `TapoutTests/`, `TapoutMonitor/` or `TapoutShield/`, all exits 0.
+- [ ] **Step 1:** Run the build/test command, the device compile check, and the device check with `-configuration Release -derivedDataPath <scratch>`. Expected: 204 tests, no warnings from `Tapout/`, `Shared/`, `TapoutTests/`, `TapoutMonitor/` or `TapoutShield/`, all exits 0.
 - [ ] **Step 2: Simulator, dark and light.** Fresh install, onboarding, lock, unlock with an intention, milestone; emergency pass then Relock now (the timer carries on); force quit while locked (still locked after relaunch); Insights leaves out pass time (lock with `-demoData`, use a pass, wait for the relock, unlock, then compare totals); the Screen Time page with `-mockScreenTimeRevoked`. Save contact sheets as `docs/superpowers/verification/phase4a-*.png`.
 - [ ] **Step 3: iPhone run (the user's; give these steps exactly).** Install with `xcrun devicectl device install app --device 00008140-000A28340E29401C build/device/Build/Products/Debug-iphoneos/Tapout.app`. In Settings → Lab, tap Reset passes first: old Phase 2 data may hold a lower count.
-  1. In Modes, give the active mode one app you use (for example Instagram), and add one Always allowed app.
-  2. Lock with your tag. Open Instagram. Expected: the Sealed screen (orb, "Sealed", "Tap a tag to open this app.", Close). Tap Close: you go back to the Home Screen. Open the always-allowed app: it opens.
-  3. Force quit Tapout, then open Instagram. Expected: still Sealed. Reopen Tapout: locked, and the timer kept counting.
-  4. Restart the iPhone. Expected: Instagram is still Sealed.
-  5. Use an emergency pass. Open Instagram: it opens. Leave Tapout closed for 5 minutes, then open Instagram. Expected: Sealed again. Lab's log shows the monitor's relock line.
-  6. Unlock with your tag. Expected: Instagram opens.
-  7. Note the pass count, delete Tapout, reinstall it, and finish onboarding. Expected: the same pass count.
-  8. In iOS Settings → Screen Time, turn off Tapout's access, then reopen Tapout. Expected: the Screen Time page. Allow again: Home returns.
-  9. Report each result, plus anything that looked or felt wrong (the lock moment against the NFC sheet, haptics, the milestone cover against the unlock).
+  0. In Xcode, open the project, select the TapoutShield target, Signing & Capabilities, and let it create a profile (your account must be signed in). Then run the device build; it must exit 0.
+  1. In Modes, give the active mode a whole category (for example Social) and one single app (for example a game). In Always allowed, add one app inside that category (for example WhatsApp or Messages).
+  2. Lock with your tag. Open an app from the blocked category and the single app: both show the Sealed screen (orb, "Sealed", "Tap a tag to open this app.", Close). Note whether the orb looks crisp and what Close does. Open the always-allowed app: it opens.
+  3. Force quit Tapout, then open a blocked app: still Sealed. Reopen Tapout: locked, and the timer kept counting.
+  4. Restart the iPhone: blocked apps are still Sealed.
+  5. Use an emergency pass: blocked apps open. Leave Tapout closed for 5 minutes, then open a blocked app: Sealed again. Open Tapout: the timer is about 5 minutes behind the time since you locked. Within 10 minutes of that first pass, use a second pass: apps must stay open for the full 5 minutes (not close at once). Lab's log shows the monitor's relock lines.
+  6. Unlock with your tag: blocked apps open.
+  7. Note the pass count, delete Tapout, reinstall, finish onboarding: the same pass count.
+  8. Turn off Tapout's Screen Time access in iOS Settings, then switch back to Tapout without quitting: the Screen Time page appears. Note whether blocked apps opened while access was off. Tap Allow (or use Open Settings if iOS doesn't ask again): Home returns and blocked apps are Sealed again. Repeat with a force quit instead of switching back.
+  9. With access on, a cold launch never flashes the Screen Time page.
+  10. Report each result, plus anything that looked or felt wrong (the lock moment against the NFC sheet, haptics, the milestone cover against the unlock).
 - [ ] **Step 4:** Report, leaving all changes uncommitted, with the suggested message `Phase 4A: real locking`.
 
 ## Notes for 4B (from this plan)
@@ -1695,3 +1697,13 @@ In `Tapout/App/RootView.swift`:
 - DeviceActivity's activity limit (about 20; check the current docs) suggests one daily activity per scheduled mode, with the weekday checked in the monitor.
 - The Family Controls **distribution** request must cover three bundle IDs: the app, `.monitor` and `.shield`.
 - If Close on the Sealed screen doesn't close on the iPhone, add a `ShieldAction` extension (a fourth bundle ID for the request).
+- State goes stale: AppModel and LockEngine only re-read on their own writes and `tick`. Once the monitor can lock, AppModel needs `reload()` and `reconcile` on every foreground and whenever `engine.session` changes.
+- Scan race: `unlocking` is computed before the NFC wait, and `lock(at:)` calls `model.startLock` even if `engine.lock()` did nothing; `startLock` → `discardInterruptedLocks` would delete a monitor-started record. Make `engine.lock()` return Bool and re-read state after the scan.
+- Cross-process writes: the app and the monitor would both read-modify-write `lockHistory`; use one writer or a coordinated write.
+- `.locked(since:)` isn't the lock start after a relock; only use it to create a missing record.
+- The monitor must route by activity name; `tapout.emergency`'s callbacks still relock; the relock activity counts toward the activity limit; `.emergency` counts as already locked in `intervalDidStart`.
+- Register activities from `completeOnboarding` as well as Modes' save, and re-register at launch (activities don't survive a reinstall).
+- "Changes while locked apply to the next window" conflicts with the read-only mode editor while locked: allow schedule edits while locked, or drop that line.
+- Owner decisions: what a scheduled start does when Screen Time access is off or the mode has no apps (an empty plan fails open today). Whether locked time should keep counting while access is off.
+- Carried over: a crash between `engine.unlock` and `finishLock` drops that record (fix when record writing moves to `Shared/`); the monitor-mid-unlock race (covered in 4A by the foreground sync) widens once `intervalDidStart` locks.
+- ManagedSettings caps shielded app tokens (about 50); a mode over the cap may not shield. Check and guard.

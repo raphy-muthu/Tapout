@@ -35,4 +35,12 @@ struct LockStatsTests {
         ]
         #expect(LockStats.lockedTime(modeID: mode, weekOf: now, in: history, calendar: calendar) == 9000)
     }
+
+    @Test func modeTimeLeavesOutPasses() {
+        let mode = UUID()
+        let start = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let lock = LockRecord(start: start, end: start + 3600, placeUID: nil, modeID: mode,
+                              passes: [DateInterval(start: start + 600, duration: 300)])
+        #expect(LockStats.lockedTime(modeID: mode, weekOf: start + 3600, in: [lock]) == 3300)
+    }
 }

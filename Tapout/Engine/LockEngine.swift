@@ -1,17 +1,12 @@
-import FamilyControls
 import Foundation
 import Observation
 
-/// The real lock: paired tags, shields, emergency passes and relock. Everything is kept in the
-/// App Group store, so the monitor extension can relock while Tapout is closed.
-/// Replaces `MockLockController` in Phase 4.
+/// The real lock: shields, emergency passes and relock, kept in the App Group store, so the monitor
+/// extension can relock while Tapout is closed and a lock survives quitting and restarts.
+/// Which tags may lock or unlock is `AppModel.check`'s job; the engine trusts its caller.
 @MainActor
 @Observable
 final class LockEngine {
-    enum TagOutcome: Equatable {
-        case locked, unlocked, rejected
-    }
-
     enum PassError: Error, Equatable {
         case notLocked, noPassesLeft
         case couldNotSchedule(String)
@@ -22,47 +17,50 @@ final class LockEngine {
 
     private(set) var session: LockSession = .unlocked
     private(set) var passesLeft = SharedStore.totalPasses
-    private(set) var pairedTags: [PairedTag] = []
-    private(set) var selection = FamilyActivitySelection()
     private(set) var relockStrategy = RelockStrategy.warning
     private(set) var log: [LogEntry] = []
 
     @ObservationIgnored private let store: SharedStore
     @ObservationIgnored private let shields: any Shielding
     @ObservationIgnored private let relock: any RelockScheduling
+    @ObservationIgnored private let passes: any PassCounting
     @ObservationIgnored private let now: () -> Date
 
     init(
         store: SharedStore,
         shields: any Shielding,
         relock: any RelockScheduling,
+        passes: any PassCounting = MemoryPassVault(),
         now: @escaping () -> Date = Date.init
     ) {
         self.store = store
         self.shields = shields
         self.relock = relock
+        self.passes = passes
         self.now = now
         reload()
     }
 
-    static func live() -> LockEngine {
-        LockEngine(store: .appGroup(), shields: ShieldController(), relock: RelockScheduler())
+    /// Screen Time on an iPhone; stand-ins in the simulator, where shields and DeviceActivity don't run.
+    static func live(store: SharedStore = .appGroup()) -> LockEngine {
+        #if targetEnvironment(simulator)
+        LockEngine(store: store, shields: NoShields(), relock: NoRelock(), passes: KeychainPassVault())
+        #else
+        LockEngine(store: store, shields: ShieldController(), relock: RelockScheduler(), passes: KeychainPassVault())
+        #endif
     }
 
     /// Re-reads the store. The monitor extension may have relocked while Tapout was in the background.
     func reload() {
         session = store.session
-        passesLeft = store.passesLeft
-        pairedTags = store.pairedTags
-        selection = store.selection
+        passesLeft = currentPassesLeft
         relockStrategy = store.relockStrategy
         log = store.log
     }
 
-    func updateSelection(_ newSelection: FamilyActivitySelection) {
-        store.selection = newSelection
-        if case .locked = store.session { shields.apply(newSelection) }
-        record("Apps: \(newSelection.applicationTokens.count), categories: \(newSelection.categoryTokens.count)")
+    /// The lower of the two counts, so losing either one never refills a pass.
+    private var currentPassesLeft: Int {
+        max(0, min(store.passesLeft, SharedStore.totalPasses - passes.used()))
     }
 
     func setRelockStrategy(_ strategy: RelockStrategy) {
@@ -70,46 +68,54 @@ final class LockEngine {
         reload()
     }
 
-    /// Returns false when the tag is already paired.
-    @discardableResult
-    func pair(_ uid: TagUID, name: String) -> Bool {
-        guard !store.pairedTags.contains(where: { $0.uid == uid }) else { return false }
-        store.pairedTags.append(PairedTag(uid: uid, name: name, pairedAt: now()))
-        record("Paired \(name) (\(uid.display))")
-        return true
+    /// Starts a lock and shields the active mode's apps. Does nothing while locked.
+    /// The lock state is written first: if Tapout dies before the shields go on, `syncShields` at the
+    /// next launch puts them on.
+    func lock() {
+        guard store.session == .unlocked else { return }
+        store.session = .locked(since: now())
+        shields.apply(store.activeShieldPlan)
+        record("Locked")
     }
 
-    func unpair(_ tag: PairedTag) {
-        store.pairedTags.removeAll { $0.uid == tag.uid }
-        record("Unpaired \(tag.name)")
+    /// Ends the lock and any open pass. Does nothing while unlocked.
+    func unlock() {
+        guard store.session != .unlocked else { return }
+        // The relock is cancelled last: if Tapout dies before then, the monitor's relock is still
+        // scheduled and finds an unlocked store, so it does nothing.
+        shields.clear()
+        store.session = .unlocked
+        relock.cancel()
+        record("Unlocked")
     }
 
-    /// A tag was read: an unknown tag changes nothing; a paired one locks, or unlocks everything.
-    func handleTag(_ uid: TagUID) -> TagOutcome {
-        guard let tag = store.pairedTags.first(where: { $0.uid == uid }) else {
-            record("Rejected unknown tag \(uid.display)")
-            return .rejected
-        }
+    /// Makes the shields match the lock state: back on at launch for a lock that survived a quit or
+    /// restart, off when unlocked, and back on after Screen Time access returns. An open pass is
+    /// paid for, so its apps are opened (finishing a `useEmergencyPass` that died after writing the
+    /// session); one past its relock time is relocked now.
+    func syncShields() {
+        let date = now()
         switch store.session {
-        case .unlocked:
-            shields.apply(store.selection)
-            store.session = .locked(since: now())
-            record("Locked with \(tag.name)")
-            return .locked
-        case .locked, .emergency:
-            relock.cancel()
-            shields.clear()
-            store.session = .unlocked
-            record("Unlocked with \(tag.name)")
-            return .unlocked
+        case .locked: shields.apply(store.activeShieldPlan)
+        case .unlocked: shields.clear()
+        case .emergency:
+            if EmergencyRelock.isDue(session: store.session, now: date, early: 0),
+               let late = EmergencyRelock.perform(store: store, shields: shields, now: date) {
+                record("Relocked in app, \(Int(late))s after relock time")
+            } else {
+                shields.clear()
+            }
         }
+        // Home reads the engine's copy, so it must not stay stale after a foreground sync.
+        reload()
     }
 
-    /// Spends one pass and opens apps for five minutes. The pass is only spent once the
-    /// relock is scheduled, so a scheduling failure never leaves apps open for good.
-    func useEmergencyPass() throws {
+    /// Spends one pass and opens apps for five minutes; returns the relock time. The pass is only spent
+    /// once the relock is scheduled, so a scheduling failure never leaves apps open for good.
+    @discardableResult
+    func useEmergencyPass() throws -> Date {
         guard case .locked = store.session else { throw PassError.notLocked }
-        guard store.passesLeft > 0 else { throw PassError.noPassesLeft }
+        guard currentPassesLeft > 0 else { throw PassError.noPassesLeft }
         let start = now()
         let relockAt = start + Self.emergencyDuration
         let strategy = store.relockStrategy
@@ -119,20 +125,28 @@ final class LockEngine {
             record("Relock schedule failed: \(error)")
             throw PassError.couldNotSchedule(String(describing: error))
         }
-        store.passesLeft -= 1
+        let left = currentPassesLeft - 1
+        // Keychain first: it is the copy that survives a reinstall, so after a crash between the
+        // two writes it is the one that is current.
+        let saved = passes.setUsed(SharedStore.totalPasses - left)
+        store.passesLeft = left
+        if !saved { record("Keychain write failed") }
         // Session first: if the process dies before the shields drop, the monitor still sees an open pass
         // and re-shields at the relock time.
         store.session = .emergency(relockAt: relockAt, duration: Self.emergencyDuration)
         shields.clear()
         record("Emergency pass, relock at \(relockAt.formatted(date: .omitted, time: .standard)) via \(strategy.rawValue)")
         record("Scheduled: \(relock.scheduledSummary())")
+        return relockAt
     }
 
+    /// Ends an emergency pass early.
     func relockNow() {
         guard case .emergency = store.session else { return }
-        relock.cancel()
-        shields.apply(store.selection)
+        // The relock is cancelled last: if Tapout dies before then, the monitor still relocks.
+        shields.apply(store.activeShieldPlan)
         store.session = .locked(since: now())
+        relock.cancel()
         record("Relocked early")
     }
 
@@ -142,7 +156,7 @@ final class LockEngine {
     @discardableResult
     func tick() -> Bool {
         let date = now()
-        if case .emergency(let relockAt, _) = store.session, date >= relockAt,
+        if EmergencyRelock.isDue(session: store.session, now: date, early: 0),
            let late = EmergencyRelock.perform(store: store, shields: shields, now: date) {
             record("Relocked in app, \(Int(late))s after relock time")
             return true
@@ -154,6 +168,12 @@ final class LockEngine {
     #if DEBUG
     func resetPasses() {
         store.passesLeft = SharedStore.totalPasses
+        // The Keychain vault never goes down through `setUsed`, so a reset deletes its item.
+        if let keychain = passes as? KeychainPassVault {
+            keychain.delete()
+        } else {
+            passes.setUsed(0)
+        }
         record("Passes reset")
     }
 

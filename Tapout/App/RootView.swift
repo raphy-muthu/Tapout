@@ -1,3 +1,4 @@
+import FamilyControls
 import SwiftUI
 
 /// Screens pushed over the tabs. The tab bar belongs to the root, so pushed screens cover it.
@@ -27,7 +28,7 @@ private enum AfterCover {
 
 /// Tabs, the floating tab bar, navigation, tag scans, the lock-moment overlay and the clock that drives auto-relock.
 struct RootView: View {
-    @State private var controller: MockLockController
+    @State private var engine: LockEngine
     @State private var model: AppModel
     @State private var tab = AppTab.home
     @State private var path: [Route] = []
@@ -40,20 +41,22 @@ struct RootView: View {
     @State private var pairing = false
     @State private var scanning = false
     @State private var keyboardUp = false
+    @State private var screenTimeNeeded = false
     @AppStorage(AppSettings.appearanceKey) private var appearance = Appearance.system
     @AppStorage(AppSettings.onboardedKey) private var hasOnboarded = false
 
     @Namespace private var lockMomentNamespace
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.legibilityWeight) private var legibilityWeight
+    @Environment(\.scenePhase) private var scenePhase
 
-    init(controller: MockLockController = MockLockController(), model: AppModel) {
-        _controller = State(initialValue: controller)
+    init(engine: LockEngine, model: AppModel) {
+        _engine = State(initialValue: engine)
         _model = State(initialValue: model)
     }
 
     var body: some View {
-        let accent = Accent.for(controller.session.lockState)
+        let accent = Accent.for(engine.session.lockState)
         NavigationStack(path: $path) {
             ZStack {
                 screen
@@ -62,7 +65,7 @@ struct RootView: View {
                         if !keyboardUp { FloatingTabBar(active: $tab) }
                     }
                 if showingLockMoment {
-                    LockMomentView(placeName: lockPlaceName, session: controller.session, intention: model.currentIntention) {
+                    LockMomentView(placeName: lockPlaceName, session: engine.session, intention: model.currentIntention) {
                         withAnimation(reduceMotion ? Motion.reveal : Motion.ui) { showingLockMoment = false }
                     }
                     .transition(.opacity)
@@ -74,12 +77,12 @@ struct RootView: View {
             .navigationDestination(for: Route.self) { route in
                 switch route {
                 case .settings:
-                    SettingsView(model: model, passesLeft: controller.passesLeft, onOpenTab: open)
+                    SettingsView(model: model, passesLeft: engine.passesLeft, onOpenTab: open)
                 }
             }
         }
         // Fraunces styles are read once per render, so rebuild the screens when Bold Text changes.
-        // The id sits on the stack, not on RootView, so controller, model and tab survive; it comes
+        // The id sits on the stack, not on RootView, so engine, model and tab survive; it comes
         // before the presentations so an open cover or sheet isn't dismissed by the change.
         .id(legibilityWeight)
         // Presentations sit inside the environment modifiers below, so covers and sheets get the accent,
@@ -89,22 +92,31 @@ struct RootView: View {
             case .rejected(let rejected):
                 RejectedView(rejected: rejected, onTryAgain: { afterCover = .scan }, onPair: { afterCover = .pair })
             case .emergencyPass:
-                EmergencyPassView(passesLeft: controller.passesLeft) {
-                    let before = controller.passesLeft
-                    withAnimation(reduceMotion ? Motion.unlockReduced : Motion.ui) { controller.useEmergencyPass() }
-                    return controller.passesLeft < before
+                EmergencyPassView(passesLeft: engine.passesLeft) {
+                    do {
+                        let relockAt = try withAnimation(reduceMotion ? Motion.unlockReduced : Motion.ui) {
+                            try engine.useEmergencyPass()
+                        }
+                        model.startPass(until: relockAt)
+                        return true
+                    } catch {
+                        return false
+                    }
                 }
             case .milestone(let milestone):
                 MilestoneView(milestone: milestone,
                               subtitle: milestone.subtitle(totalLocked: model.totalLocked, interests: model.interests))
             }
         }
-        .sheet(item: $intentionCheck, onDismiss: { if !scanning { showMilestone() } }) { check in
+        .sheet(item: $intentionCheck, onDismiss: {
+            checkScreenTime()
+            if !scanning { showMilestone() }
+        }) { check in
             IntentionCheckSheet(check: check) { done in
                 model.answerIntention(forLockStartedAt: check.id, done: done)
             }
         }
-        .sheet(isPresented: $pairing) {
+        .sheet(isPresented: $pairing, onDismiss: checkScreenTime) {
             PairPlaceSheet(model: model)
         }
         // Below the id, so turning on Bold Text in Settings can't reset the draft. On its own host,
@@ -114,9 +126,27 @@ struct RootView: View {
                 OnboardingView(model: model) { hasOnboarded = true }
             }
         }
+        // Its own host too, for the same reason. It needs onboarding done, so the two never overlap.
+        .background {
+            Color.clear.fullScreenCover(isPresented: $screenTimeNeeded) {
+                ScreenTimeAgainView { screenTimeNeeded = false }
+            }
+        }
+        .onChange(of: screenTimeNeeded) { wasNeeded, needed in
+            // The page closed: access came back, by its own button or by the check.
+            if wasNeeded && !needed { engine.syncShields() }
+        }
+        // The foreground read of the status can be stale, so a revoke is also caught as it publishes.
+        .onReceive(AuthorizationCenter.shared.$authorizationStatus) { _ in checkScreenTime() }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                engine.syncShields()
+                checkScreenTime()
+            }
+        }
         .environment(\.lockMomentLink, reduceMotion ? nil
             : LockMomentLink(namespace: lockMomentNamespace, overlayShowing: showingLockMoment))
-        .environment(\.isLocked, controller.session.lockState == .locked)
+        .environment(\.isLocked, engine.session.lockState == .locked)
         .environment(\.accent, accent)
         .tint(accent.line)
         .preferredColorScheme(appearance.colorScheme)
@@ -127,8 +157,10 @@ struct RootView: View {
             withAnimation(reduceMotion ? Motion.reveal : Motion.ui) { keyboardUp = false }
         }
         .task {
-            // Lock state isn't persisted yet, so a lock left open by a crash can't still be running.
-            if controller.session == .unlocked { model.discardInterruptedLocks() }
+            // The lock state is the truth: it survives quitting, and the monitor can relock while Tapout is closed.
+            engine.syncShields()
+            model.reconcile(with: engine.session)
+            checkScreenTime()
             await runClock()
         }
     }
@@ -138,7 +170,7 @@ struct RootView: View {
         switch tab {
         case .home:
             HomeView(
-                controller: controller,
+                engine: engine,
                 model: model,
                 intentionDraft: $intentionDraft,
                 onScan: { Task { await scan() } },
@@ -152,6 +184,16 @@ struct RootView: View {
         case .insights:
             InsightsView(model: model)
         }
+    }
+
+    /// Screen Time access can be turned off in Settings; until it's back, nothing can be shielded.
+    /// Waits while another cover or sheet is up, so two presentations never fight; their dismissals check again.
+    private func checkScreenTime() {
+        let needed = hasOnboarded && !ScreenTimeAccess.isApproved
+        // Approved clears the flag even under a cover or sheet; only showing the page waits.
+        guard needed else { screenTimeNeeded = false; return }
+        guard cover == nil, intentionCheck == nil, !pairing, !scanning else { return }
+        screenTimeNeeded = true
     }
 
     /// A quick double tap on the gear would otherwise push Settings twice.
@@ -172,7 +214,7 @@ struct RootView: View {
         scanning = true
         defer { scanning = false }
         Haptics.prepare()
-        let unlocking = controller.session.lockState == .locked
+        let unlocking = engine.session.lockState == .locked
         // The simulator stand-in finds a place that works, unless launched with -mockUnknownTag.
         let known = unlocking ? model.unlockPlacesForActiveMode.first?.uid : model.defaultPlace?.uid
         let uid: TagUID
@@ -195,7 +237,7 @@ struct RootView: View {
     }
 
     private func lock(at place: PairedTag) {
-        controller.simulateTagRead()
+        engine.lock()
         model.startLock(placeUID: place.uid, intention: intentionDraft)
         intentionDraft = ""
         lockPlaceName = place.name
@@ -204,7 +246,7 @@ struct RootView: View {
 
     private func unlock() {
         Haptics.unlock()
-        withAnimation(reduceMotion ? Motion.unlockReduced : Motion.unlock) { controller.simulateTagRead() }
+        withAnimation(reduceMotion ? Motion.unlockReduced : Motion.unlock) { engine.unlock() }
         if let record = model.finishLock(), let intention = record.intention {
             intentionCheck = IntentionCheck(id: record.start, intention: intention)
         }
@@ -214,7 +256,8 @@ struct RootView: View {
     /// After an unlock (and its "Did you do it?" sheet), celebrate the milestones not shown yet, one at a time.
     /// One that can't show now stays unseen for the next unlock.
     private func showMilestone() {
-        guard cover == nil, controller.session == .unlocked, let milestone = model.unseenMilestone() else { return }
+        guard cover == nil, !screenTimeNeeded, engine.session == .unlocked,
+              let milestone = model.unseenMilestone() else { return }
         model.markSeen(milestone)
         afterCover = .milestone
         cover = .milestone(milestone)
@@ -223,6 +266,8 @@ struct RootView: View {
     private func runAfterCover() {
         let action = afterCover
         afterCover = nil
+        checkScreenTime()
+        guard !screenTimeNeeded else { return }
         switch action {
         case .scan: Task { await scan() }
         case .pair: pairing = true
@@ -234,9 +279,8 @@ struct RootView: View {
     private func runClock() async {
         while !Task.isCancelled {
             try? await Task.sleep(for: .seconds(1))
-            let before = controller.session
-            withAnimation(reduceMotion ? Motion.lockReduced : Motion.lock) { controller.tick() }
-            if controller.session != before { Haptics.lock() }
+            let relocked = withAnimation(reduceMotion ? Motion.lockReduced : Motion.lock) { engine.tick() }
+            if relocked { Haptics.lock() }
         }
     }
 }
