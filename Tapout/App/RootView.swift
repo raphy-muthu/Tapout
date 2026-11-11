@@ -134,13 +134,21 @@ struct RootView: View {
         }
         .onChange(of: screenTimeNeeded) { wasNeeded, needed in
             // The page closed: access came back, by its own button or by the check.
-            if wasNeeded && !needed { engine.syncShields() }
+            if wasNeeded && !needed {
+                engine.syncShields()
+                model.syncSchedules()
+            }
         }
+        // A lock the monitor started (a schedule) gets its record here; for the app's own lock,
+        // unlock, pass and relock the record is already right, so this changes nothing.
+        .onChange(of: engine.session) { _, session in model.reconcile(with: session) }
         // The foreground read of the status can be stale, so a revoke is also caught as it publishes.
         .onReceive(AuthorizationCenter.shared.$authorizationStatus) { _ in checkScreenTime() }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 engine.syncShields()
+                model.reconcile(with: engine.session)
+                model.syncSchedules()
                 checkScreenTime()
             }
         }
@@ -160,7 +168,11 @@ struct RootView: View {
             // The lock state is the truth: it survives quitting, and the monitor can relock while Tapout is closed.
             engine.syncShields()
             model.reconcile(with: engine.session)
+            model.syncSchedules()
             checkScreenTime()
+            // Schedules made before notifications were asked for still lock while Tapout is closed.
+            // Its own task, so the clock doesn't wait for the owner to answer the prompt.
+            if hasOnboarded, model.hasRunnableSchedule, !Self.isDemo { Task { await NoticePermission.request() } }
             await runClock()
         }
     }
@@ -189,7 +201,10 @@ struct RootView: View {
     /// Screen Time access can be turned off in Settings; until it's back, nothing can be shielded.
     /// Waits while another cover or sheet is up, so two presentations never fight; their dismissals check again.
     private func checkScreenTime() {
-        let needed = hasOnboarded && !ScreenTimeAccess.isApproved
+        let status = ScreenTimeAccess.status
+        let approved = status == .approved
+        model.noteScreenTimeAccess(status)
+        let needed = hasOnboarded && !approved
         // Approved clears the flag even under a cover or sheet; only showing the page waits.
         guard needed else { screenTimeNeeded = false; return }
         guard cover == nil, intentionCheck == nil, !pairing, !scanning else { return }
@@ -223,6 +238,9 @@ struct RootView: View {
         } catch {
             return // cancelled, or no tag: the system NFC sheet already said so
         }
+        // A schedule may have locked while the tag was being read. Drop the read rather than act on old state.
+        engine.reload()
+        guard (engine.session.lockState == .locked) == unlocking else { return }
         let tryPlaces = (unlocking ? model.unlockPlacesForActiveMode : model.places).map(\.name)
         switch model.check(uid, unlocking: unlocking) {
         case .accepted(let place):
@@ -237,7 +255,7 @@ struct RootView: View {
     }
 
     private func lock(at place: PairedTag) {
-        engine.lock()
+        guard engine.lock() else { return }
         model.startLock(placeUID: place.uid, intention: intentionDraft)
         intentionDraft = ""
         lockPlaceName = place.name
@@ -274,6 +292,15 @@ struct RootView: View {
         case .milestone: showMilestone()
         case nil: break
         }
+    }
+
+    /// `-demoData` screenshots shouldn't stop for the notification prompt.
+    private static var isDemo: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.arguments.contains("-demoData")
+        #else
+        false
+        #endif
     }
 
     private func runClock() async {

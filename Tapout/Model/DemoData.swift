@@ -84,7 +84,9 @@ extension AppModel {
         }
         if arguments.contains("-resetOnboarding") { UserDefaults.standard.set(false, forKey: AppSettings.onboardedKey) }
         if arguments.contains("-resetMilestones") { store.seenMilestones = [] }
-        return AppModel(store: store)
+        // Demo modes are for screenshots: they must not register real activities.
+        let schedules: any ScheduleRegistering = arguments.contains("-demoData") ? NoSchedules() : ScheduleRegistrars.live(store: store)
+        return AppModel(store: store, schedules: schedules)
     }
 }
 #endif

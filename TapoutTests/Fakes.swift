@@ -1,3 +1,4 @@
+import DeviceActivity
 import FamilyControls
 import Foundation
 @testable import Tapout
@@ -59,4 +60,42 @@ final class FakeRelock: RelockScheduling {
     }
 
     func scheduledSummary() -> String { "fake schedule" }
+}
+
+/// Records notifications instead of posting them, as "title|body".
+final class FakeNotifier: LockNotifying {
+    private(set) var posted: [String] = []
+
+    func post(title: String, body: String) { posted.append("\(title)|\(body)") }
+}
+
+/// Records DeviceActivity calls.
+final class FakeActivityCenter: ActivityCentering {
+    var failure: (any Error)?
+    private(set) var activities: [DeviceActivityName] = []
+    private(set) var started: [DeviceActivityName] = []
+    private(set) var stopped: [DeviceActivityName] = []
+
+    init(running: [DeviceActivityName] = []) { activities = running }
+
+    func startMonitoring(_ activity: DeviceActivityName, during schedule: DeviceActivitySchedule) throws {
+        if let failure { throw failure }
+        started.append(activity)
+        if !activities.contains(activity) { activities.append(activity) }
+    }
+
+    func stopMonitoring(_ names: [DeviceActivityName]) {
+        stopped += names
+        activities.removeAll { names.contains($0) }
+    }
+}
+
+/// Records what the model asked to register.
+final class FakeSchedules: ScheduleRegistering {
+    private(set) var synced: [[Mode]] = []
+
+    func sync(_ modes: [Mode]) -> [String] {
+        synced.append(modes)
+        return []
+    }
 }

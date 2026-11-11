@@ -232,6 +232,7 @@ struct ModeEditor: View {
         var mode = draft
         mode.schedule = schedule
         model.save(mode)
+        if mode.schedule != nil { Task { await NoticePermission.request() } }
         Haptics.select()
         dismiss()
     }

@@ -1,7 +1,7 @@
 import FamilyControls
 import Foundation
 
-/// When a mode locks by itself. It locks at `start` and unlocks at `end` on each of `days`.
+/// When a mode locks by itself: at `start` on each of `days`. Schedules never unlock; a tag does.
 struct ModeSchedule: Codable, Equatable, Sendable {
     /// Calendar weekday numbers: 1 = Sunday … 7 = Saturday.
     var days: Set<Int>

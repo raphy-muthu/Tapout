@@ -26,16 +26,19 @@ final class AppModel {
     private(set) var seenMilestones: Set<String> = []
 
     @ObservationIgnored private let store: SharedStore
+    @ObservationIgnored private let schedules: any ScheduleRegistering
     @ObservationIgnored private let now: () -> Date
 
-    init(store: SharedStore, now: @escaping () -> Date = Date.init) {
+    init(store: SharedStore, schedules: any ScheduleRegistering = NoSchedules(), now: @escaping () -> Date = Date.init) {
         self.store = store
+        self.schedules = schedules
         self.now = now
         reload()
     }
 
     static func live() -> AppModel {
-        AppModel(store: .appGroup())
+        let store = SharedStore.appGroup()
+        return AppModel(store: store, schedules: ScheduleRegistrars.live(store: store))
     }
 
     /// Re-reads the store. Seeds the starter mode when there are none, so `activeMode` always exists.
@@ -84,17 +87,33 @@ final class AppModel {
         modes.contains { $0.id == mode.id }
     }
 
+    /// Tells the monitor what the app last found, since the extension may not see the authorization itself.
+    /// Only definite answers are kept: approved, denied. An undetermined status leaves the stored value as it is.
+    func noteScreenTimeAccess(_ status: ScheduledLock.LiveAccess) {
+        let approved: Bool
+        switch status {
+        case .approved: approved = true
+        case .denied: approved = false
+        case .notDetermined: return
+        }
+        if store.screenTimeApproved != approved { store.screenTimeApproved = approved }
+    }
+
     /// Adds the mode, or replaces the stored one with the same id.
     func save(_ mode: Mode) {
         var mode = mode
         mode.name = Self.cleaned(mode.name, fallback: "Mode")
+        let previous = store.modes.first { $0.id == mode.id }?.schedule
         var all = store.modes
         if let index = all.firstIndex(where: { $0.id == mode.id }) {
             all[index] = mode
         } else {
             all.append(mode)
         }
+        // Stamp first: a monitor callback between the two writes must not see the new schedule unstamped.
+        if previous != mode.schedule { stampSchedule(of: mode.id) }
         store.modes = all
+        syncSchedules()
         reload()
     }
 
@@ -105,9 +124,31 @@ final class AppModel {
         guard all.count > 1, all.contains(where: { $0.id == id }) else { return false }
         all.removeAll { $0.id == id }
         store.modes = all
+        var stamps = store.scheduleSavedAt
+        stamps[id.uuidString] = nil
+        store.scheduleSavedAt = stamps
+        syncSchedules()
         if store.activeModeID == id { store.activeModeID = all[0].id }
         reload()
         return true
+    }
+
+    /// Starts or stops DeviceActivity's activities to match the modes. Every start, stop and problem goes to the log.
+    /// Also called at launch, which restarts only activities that changed or stopped.
+    func syncSchedules() {
+        for line in schedules.sync(store.modes) {
+            store.appendLog(line, source: .app)
+        }
+    }
+
+    /// Whether any mode has a schedule that could run.
+    var hasRunnableSchedule: Bool { ModeActivity.runnableCount(in: store.modes) > 0 }
+
+    /// A schedule saved during one of its windows starts from the next window.
+    private func stampSchedule(of id: UUID) {
+        var stamps = store.scheduleSavedAt
+        stamps[id.uuidString] = now()
+        store.scheduleSavedAt = stamps
     }
 
     func setActiveMode(_ id: UUID) {
@@ -296,7 +337,9 @@ final class AppModel {
 
     /// Matches the history to the lock state at launch. The lock state wins: shields follow it,
     /// it survives quitting, and the monitor can relock while Tapout is closed.
+    /// It re-reads the store first: the monitor may have made a scheduled mode active.
     func reconcile(with session: LockSession) {
+        reload()
         if case .unlocked = session {
             discardInterruptedLocks()
             return

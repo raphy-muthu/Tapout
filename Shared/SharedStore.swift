@@ -114,6 +114,32 @@ final class SharedStore {
         set { write(newValue, .seenMilestones) }
     }
 
+    /// When the owner last unlocked. A schedule doesn't relock a window the owner unlocked in.
+    var lastUnlockAt: Date? {
+        get { read(.lastUnlockAt, absent: nil, corrupt: nil) }
+        set { write(newValue, .lastUnlockAt) }
+    }
+
+    /// When each mode's schedule was last saved, by mode id. A window the schedule was saved in doesn't lock.
+    var scheduleSavedAt: [String: Date] {
+        get { read(.scheduleSavedAt, absent: [:], corrupt: [:]) }
+        set { write(newValue, .scheduleSavedAt) }
+    }
+
+    /// The schedule each mode activity was last started with, by activity name, so a launch only
+    /// restarts activities that changed or stopped (a restart could re-fire a window's start).
+    var registeredSchedules: [String: ModeSchedule] {
+        get { read(.registeredSchedules, absent: [:], corrupt: [:]) }
+        set { write(newValue, .registeredSchedules) }
+    }
+
+    /// Whether the app last found Screen Time access approved; nil until it has checked. The monitor
+    /// falls back to this when its own view of the authorization is undetermined.
+    var screenTimeApproved: Bool? {
+        get { read(.screenTimeApproved, absent: nil, corrupt: nil) }
+        set { write(newValue, .screenTimeApproved) }
+    }
+
     var log: [LogEntry] {
         read(.log, absent: [], corrupt: [])
     }
@@ -132,6 +158,7 @@ final class SharedStore {
         case session, pairedTags, passesLeft, relockStrategy, log
         case modes, activeModeID, defaultPlace, lockHistory, alwaysAllowed
         case currentIntention, interests, seenMilestones
+        case lastUnlockAt, scheduleSavedAt, registeredSchedules, screenTimeApproved
     }
 
     /// `absent` when nothing was ever stored. `corrupt` when data is there but won't decode;

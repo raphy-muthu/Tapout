@@ -68,14 +68,17 @@ final class LockEngine {
         reload()
     }
 
-    /// Starts a lock and shields the active mode's apps. Does nothing while locked.
+    /// Starts a lock and shields the active mode's apps. Returns false when already locked (a schedule may
+    /// have locked while a tag was being read).
     /// The lock state is written first: if Tapout dies before the shields go on, `syncShields` at the
     /// next launch puts them on.
-    func lock() {
-        guard store.session == .unlocked else { return }
+    @discardableResult
+    func lock() -> Bool {
+        guard store.session == .unlocked else { return false }
         store.session = .locked(since: now())
         shields.apply(store.activeShieldPlan)
         record("Locked")
+        return true
     }
 
     /// Ends the lock and any open pass. Does nothing while unlocked.
@@ -84,6 +87,8 @@ final class LockEngine {
         // The relock is cancelled last: if Tapout dies before then, the monitor's relock is still
         // scheduled and finds an unlocked store, so it does nothing.
         shields.clear()
+        // The unlock time goes first, so a monitor start landing between the two writes sees the unlock.
+        store.lastUnlockAt = now()
         store.session = .unlocked
         relock.cancel()
         record("Unlocked")

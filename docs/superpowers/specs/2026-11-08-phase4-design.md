@@ -29,13 +29,20 @@ Handoff build-order step 5: replace the mock lock with Screen Time. Phase 2 prov
 - **Simulator:** shields and DeviceActivity don't run there, so `LockEngine.live()` uses stand-ins and the app's clock relocks an expired pass. `-mockScreenTimeRevoked` shows the Screen Time page.
 - **Lab (DEBUG):** keeps Screen Time and App Group status, the session, passes with reset, the relock strategy and the log. Pairing, scanning and pass buttons go, because they would bypass `AppModel`.
 
-## 4B outline (planned after 4A)
+## 4B: schedules (decisions 2026-11-10)
 
-- One DeviceActivity activity per scheduled mode, repeating daily at the mode's start and end. The monitor checks the weekday in `intervalDidStart`, because one activity per weekday could pass the activity limit (about 20; check the current docs).
-- `intervalDidStart`: if unlocked, make the scheduled mode active, start a lock record (shared helper), set `.locked(since:)` and apply the plan. If already locked, do nothing.
-- `intervalDidEnd`: nothing, because schedules never unlock.
-- Saving or deleting a mode re-registers its activity. Changes while locked apply to the next window.
-- Overlapping windows: the first to start wins; later starts find the phone locked and do nothing.
+| | |
+| --- | --- |
+| Schedule end | Never unlocks (unchanged). `intervalDidEnd` only logs. |
+| Lock notice | A quiet local notification when a schedule locks: the mode's name and "Locked until you tap a tag." Permission is asked once, when a schedule is first saved (Modes or onboarding). |
+| Can't lock | The window is skipped and a notification says why: "Didn't lock: no apps chosen.", "Didn't lock: Screen Time is off." or "Didn't lock: no tag paired." Nothing is recorded. |
+| Editing while locked | Modes stay read-only during a lock, schedules included. |
+| A tap during a window | Unlocks until the next window: the monitor skips a window that the owner unlocked in (`lastUnlockAt` at or after the window's start). |
+| Saving mid-window | A schedule saved or changed during one of its windows starts from the next window, so finishing onboarding at 2 PM with "Afternoons" doesn't lock at once (`scheduleSavedAt`). |
+| Lock records | Only the app writes the history. The monitor writes the lock state and makes the scheduled mode active; the app's `reconcile` adds the record (no place, no intention) on the next foreground or session change. |
+| Activities | One daily activity per scheduled mode (`tapout.mode.<uuid>`), weekday checked in the monitor; at most 19, keeping one for the emergency relock (DeviceActivity throws `excessiveActivities` past its limit). An activity is restarted only when its schedule changed or it isn't running, so launches never re-fire a window. |
+| Overlaps | The first window to start wins; later starts find the phone locked and skip quietly. |
+| Locked time while Screen Time is off | Keeps counting (no change); revisit if it matters. |
 
 ## Not in Phase 4
 

@@ -247,6 +247,15 @@ struct AppModelLockTests {
         #expect(model.history == [LockRecord(start: since, end: nil, placeUID: nil, modeID: model.activeMode.id)])
     }
 
+    @Test func reconcileTwiceAddsOneRecord() {
+        let model = pairedModel()
+        let since = clock.now - 600
+        model.reconcile(with: .locked(since: since))
+        model.reconcile(with: .locked(since: since))
+        #expect(model.history.filter { $0.end == nil }.count == 1)
+        #expect(model.history.count == 1)
+    }
+
     @Test func reconcileAddsTheOpenPassToo() throws {
         let model = pairedModel()
         let relockAt = clock.now + 200
@@ -304,5 +313,16 @@ struct AppModelLockTests {
         let open = model.history.filter { $0.end == nil }
         #expect(open.count == 1)
         #expect(open.first?.start == newer.start)
+    }
+
+    @Test func reconcileSeesAModeTheMonitorMadeActive() throws {
+        let model = pairedModel()
+        let evenings = Mode(name: "Evenings")
+        model.save(evenings)
+        // The monitor writes straight to the store: the scheduled mode becomes active and the lock starts.
+        store.activeModeID = evenings.id
+        model.reconcile(with: .locked(since: clock.now))
+        #expect(try #require(model.history.last).modeID == evenings.id)
+        #expect(model.activeMode.id == evenings.id)
     }
 }

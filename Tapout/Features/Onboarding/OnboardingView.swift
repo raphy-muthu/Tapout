@@ -131,6 +131,7 @@ struct OnboardingView: View {
             schedule: draft.schedule,
             interests: Interest.allCases.filter(draft.interests.contains)
         )
+        if draft.schedule != nil { Task { await NoticePermission.request() } }
         onFinish()
     }
 }

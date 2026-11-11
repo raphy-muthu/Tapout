@@ -1,17 +1,31 @@
 import DeviceActivity
+import FamilyControls
 import Foundation
 import os
 
-/// Runs in its own process, woken by DeviceActivity. Relocks an emergency pass when its
-/// interval reaches the relock time, and logs every callback so the Lab shows when it fired.
+/// Runs in its own process, woken by DeviceActivity. Starts scheduled locks when a mode's window
+/// begins (schedules never unlock), relocks an emergency pass at its relock time, and logs every
+/// callback so the Lab shows when it fired.
 final class TapoutMonitor: DeviceActivityMonitor {
     /// A second timing record, independent of the shared log (read it in Console.app).
     private static let logger = Logger(subsystem: "com.raphymuthu.tapout", category: "monitor")
 
     override func intervalDidStart(for activity: DeviceActivityName) {
         super.intervalDidStart(for: activity)
-        Self.logger.info("intervalDidStart \(activity.rawValue, privacy: .public) at \(Date().formatted(date: .omitted, time: .standard), privacy: .public)")
-        SharedStore.appGroup().appendLog("intervalDidStart \(activity.rawValue)", source: .monitor)
+        let store = SharedStore.appGroup()
+        let now = Date()
+        guard let modeID = ModeActivity.modeID(of: activity) else {
+            log("intervalDidStart \(activity.rawValue)", store, now)
+            return
+        }
+        let live = Self.liveAccess
+        let mirrored = store.screenTimeApproved
+        let readout = "live \(live), app \(mirrored.map(String.init(describing:)) ?? "nil")"
+        let line = ScheduledLock.run(modeID: modeID, store: store, shields: ShieldController(),
+                                     notifier: LocalNotifier(), now: now,
+                                     accessApproved: ScheduledLock.accessApproved(live: live, mirrored: mirrored),
+                                     accessReadout: readout)
+        log(line, store, now)
     }
 
     override func intervalWillEndWarning(for activity: DeviceActivityName) {
@@ -21,21 +35,36 @@ final class TapoutMonitor: DeviceActivityMonitor {
 
     override func intervalDidEnd(for activity: DeviceActivityName) {
         super.intervalDidEnd(for: activity)
+        if ModeActivity.modeID(of: activity) != nil {
+            // Schedules never unlock: the end of a window changes nothing.
+            log("Schedule window ended: \(activity.rawValue)", SharedStore.appGroup(), Date())
+            return
+        }
         relock(activity, callback: "intervalDidEnd")
+    }
+
+    /// What this process sees of Screen Time access; the rule in `ScheduledLock.accessApproved` decides.
+    private static var liveAccess: ScheduledLock.LiveAccess {
+        let status = AuthorizationCenter.shared.authorizationStatus
+        if status == .approved { return .approved }
+        if #available(iOS 26.4, *), status == .approvedWithDataAccess { return .approved }
+        return status == .denied ? .denied : .notDetermined
+    }
+
+    private func log(_ line: String, _ store: SharedStore, _ now: Date) {
+        Self.logger.info("\(line, privacy: .public) at \(now.formatted(date: .omitted, time: .standard), privacy: .public)")
+        store.appendLog(line, source: .monitor, at: now)
     }
 
     private func relock(_ activity: DeviceActivityName, callback: String) {
         guard activity == RelockPlan.activity else { return }
         let store = SharedStore.appGroup()
         let now = Date()
-        let time = now.formatted(date: .omitted, time: .standard)
         if let late = EmergencyRelock.perform(store: store, shields: ShieldController(), now: now) {
-            Self.logger.info("\(callback, privacy: .public) \(activity.rawValue, privacy: .public) at \(time, privacy: .public): relocked, \(Int(late), privacy: .public)s late")
-            store.appendLog("\(callback): relocked, \(Int(late))s after relock time", source: .monitor, at: now)
+            log("\(callback): relocked, \(Int(late))s after relock time", store, now)
         } else {
             let reason = if case .emergency = store.session { "not due yet" } else { "nothing to relock" }
-            Self.logger.info("\(callback, privacy: .public) \(activity.rawValue, privacy: .public) at \(time, privacy: .public): \(reason, privacy: .public)")
-            store.appendLog("\(callback): \(reason)", source: .monitor, at: now)
+            log("\(callback): \(reason)", store, now)
         }
     }
 }

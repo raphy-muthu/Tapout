@@ -7,6 +7,27 @@ private struct FailingVault: PassCounting {
     func setUsed(_ count: Int) -> Bool { false }
 }
 
+/// KVO on the store's session key. UserDefaults notifies synchronously on the writing thread.
+private final class SessionWatcher: NSObject, @unchecked Sendable {
+    private let store: SharedStore
+    private let defaults: UserDefaults
+    private(set) var unlockAtWhenUnlocked: Date?
+
+    init(store: SharedStore, defaults: UserDefaults) {
+        self.store = store
+        self.defaults = defaults
+        super.init()
+        defaults.addObserver(self, forKeyPath: "session", options: [], context: nil)
+    }
+
+    deinit { defaults.removeObserver(self, forKeyPath: "session") }
+
+    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey: Any]?,
+                               context: UnsafeMutableRawPointer?) {
+        if store.session == .unlocked { unlockAtWhenUnlocked = store.lastUnlockAt }
+    }
+}
+
 @MainActor
 struct LockEngineTests {
     private final class Clock {
@@ -257,5 +278,33 @@ struct LockEngineTests {
         let engine = lockedEngine()
         engine.unlock()
         #expect(engine.log.map(\.message) == ["Locked", "Unlocked"])
+    }
+
+    @Test func unlockRecordsWhen() {
+        let engine = lockedEngine()
+        clock.now += 60
+        engine.unlock()
+        #expect(store.lastUnlockAt == clock.now)
+    }
+
+    /// Watches the session key and notes what `lastUnlockAt` held the moment the session became unlocked.
+    /// With the old order (session first) it is nil there, so the test fails.
+    @Test func unlockWritesLastUnlockBeforeTheSession() {
+        let suite = "tapout.tests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        let watched = SharedStore(defaults: defaults)
+        let watcher = SessionWatcher(store: watched, defaults: defaults)
+        let engine = LockEngine(store: watched, shields: shields, relock: relock, passes: vault, now: { [clock] in clock.now })
+        engine.lock()
+        clock.now += 60
+        engine.unlock()
+        #expect(watcher.unlockAtWhenUnlocked == clock.now)
+        withExtendedLifetime(watcher) {}
+    }
+
+    @Test func lockSaysWhetherItLocked() {
+        let engine = makeEngine()
+        #expect(engine.lock())
+        #expect(!engine.lock())
     }
 }
