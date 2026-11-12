@@ -26,6 +26,16 @@ struct AppModelLockTests {
         return model
     }
 
+    @Test func theSnapshotComesFromTheSameStore() {
+        let model = pairedModel()
+        model.startLock(placeUID: kitchen, intention: nil)
+        store.session = .locked(since: clock.now)
+        clock.now += 600
+        let snapshot = model.lockSnapshot(at: clock.now)
+        #expect(snapshot.state == .locked(countingFrom: clock.now - 600))
+        #expect(snapshot.placeName == "Kitchen")
+    }
+
     @Test func startLockRecordsTheActiveModePlaceAndIntention() throws {
         let model = pairedModel()
         model.startLock(placeUID: kitchen, intention: "  History essay  ")

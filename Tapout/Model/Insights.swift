@@ -34,7 +34,7 @@ enum Insights {
     /// Best time and goals look back four weeks.
     static let lookback: TimeInterval = 28 * 86_400
 
-    struct Day: Equatable {
+    struct Day: Equatable, Sendable {
         let start: Date
         /// "M", "T", …
         let letter: String

@@ -45,6 +45,14 @@ struct AppModelTests {
         #expect(AppModel(store: store).activeMode.id == evenings.id)
     }
 
+    @Test func settingTheActiveModeWritesItsNameForTheWidgets() {
+        let model = AppModel(store: store)
+        let evenings = Mode(name: "Evenings")
+        model.save(evenings)
+        model.setActiveMode(evenings.id)
+        #expect(store.activeModeName == "Evenings")
+    }
+
     @Test func theLastModeCantBeDeleted() {
         let model = AppModel(store: store)
         #expect(!model.deleteMode(id: model.modes[0].id))

@@ -80,6 +80,13 @@ final class SharedStore {
         set { write(newValue, .activeModeID) }
     }
 
+    /// The active mode's name, for the widgets and Live Activity: they can't decode a mode's app selection
+    /// (no Family Controls entitlement), so they read this instead of `modes`.
+    var activeModeName: String? {
+        get { read(.activeModeName, absent: nil, corrupt: nil) }
+        set { write(newValue, .activeModeName) }
+    }
+
     /// The place Places shows first.
     var defaultPlace: TagUID? {
         get { read(.defaultPlace, absent: nil, corrupt: nil) }
@@ -156,7 +163,7 @@ final class SharedStore {
 
     private enum Key: String {
         case session, pairedTags, passesLeft, relockStrategy, log
-        case modes, activeModeID, defaultPlace, lockHistory, alwaysAllowed
+        case modes, activeModeID, activeModeName, defaultPlace, lockHistory, alwaysAllowed
         case currentIntention, interests, seenMilestones
         case lastUnlockAt, scheduleSavedAt, registeredSchedules, screenTimeApproved
     }

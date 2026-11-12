@@ -6,6 +6,17 @@ struct InsightsView: View {
     let model: AppModel
 
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var recap: Image?
+
+    /// Everything the shared image shows; when it changes the old image is dropped before the new render.
+    private struct RecapKey: Equatable {
+        var weekStart: Date
+        var totalText: String
+        var scheme: ColorScheme
+        var interests: [Interest]
+        var days: [Double]
+    }
 
     var body: some View {
         TimelineView(.everyMinute) { context in
@@ -18,6 +29,10 @@ struct InsightsView: View {
         let history = model.history
         let total = Insights.lockedTime(in: Insights.week(of: now, calendar: calendar), history: history, now: now)
         let comparison = Comparison.best(for: total, interests: model.interests)
+        let weekStart = Insights.week(of: now, calendar: calendar).start
+        let days = Insights.days(weekOf: now, history: history, now: now, calendar: calendar)
+        let recapKey = RecapKey(weekStart: weekStart, totalText: TimeFormat.short(total), scheme: colorScheme,
+                                interests: Array(model.interests), days: days.map(\.lockedTime))
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 header(total: total)
@@ -46,6 +61,12 @@ struct InsightsView: View {
             .padding(.bottom, Space.lg)
         }
         .scrollIndicators(.hidden)
+        // Re-render only when something the image shows changes: at most once a minute.
+        .task(id: recapKey) {
+            recap = nil
+            let view = RecapView(weekStart: weekStart, total: total, days: days, comparison: comparison)
+            if let image = RecapImage.render(view, colorScheme: colorScheme) { recap = Image(uiImage: image) }
+        }
     }
 
     private func header(total: TimeInterval) -> some View {
@@ -53,18 +74,29 @@ struct InsightsView: View {
             Text("This week").font(.tHeadline).foregroundStyle(Color.ink).accessibilityAddTraits(.isHeader)
             Spacer()
             if total > 0 {
-                ShareLink(item: "\(TimeFormat.short(total)) phone-free this week, with Tapout.") {
-                    Image(systemName: "square.and.arrow.up")
-                        .font(.system(size: 20, weight: .medium))
-                        .foregroundStyle(Color.inkSecondary)
-                        .frame(width: 44, height: 44)
-                        .background(Color.surface1, in: Circle())
-                        .cardShadow()
+                let text = "\(TimeFormat.short(total)) phone-free this week, with Tapout."
+                if let recap {
+                    ShareLink(item: recap, message: Text(text),
+                              preview: SharePreview("Your week", image: recap)) {
+                        shareIcon
+                    }
+                    .accessibilityLabel("Share")
+                } else {
+                    ShareLink(item: text) { shareIcon }
+                        .accessibilityLabel("Share")
                 }
-                .accessibilityLabel("Share")
             }
         }
         .frame(height: 44)
+    }
+
+    private var shareIcon: some View {
+        Image(systemName: "square.and.arrow.up")
+            .font(.system(size: 20, weight: .medium))
+            .foregroundStyle(Color.inkSecondary)
+            .frame(width: 44, height: 44)
+            .background(Color.surface1, in: Circle())
+            .cardShadow()
     }
 
     private func tiles(now: Date, calendar: Calendar) -> some View {

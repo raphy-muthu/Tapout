@@ -2,6 +2,7 @@ import DeviceActivity
 import FamilyControls
 import Foundation
 import os
+import WidgetKit
 
 /// Runs in its own process, woken by DeviceActivity. Starts scheduled locks when a mode's window
 /// begins (schedules never unlock), relocks an emergency pass at its relock time, and logs every
@@ -26,6 +27,7 @@ final class TapoutMonitor: DeviceActivityMonitor {
                                      accessApproved: ScheduledLock.accessApproved(live: live, mirrored: mirrored),
                                      accessReadout: readout)
         log(line, store, now)
+        WidgetCenter.shared.reloadAllTimelines()
     }
 
     override func intervalWillEndWarning(for activity: DeviceActivityName) {
@@ -62,6 +64,7 @@ final class TapoutMonitor: DeviceActivityMonitor {
         let now = Date()
         if let late = EmergencyRelock.perform(store: store, shields: ShieldController(), now: now) {
             log("\(callback): relocked, \(Int(late))s after relock time", store, now)
+            WidgetCenter.shared.reloadAllTimelines()
         } else {
             let reason = if case .emergency = store.session { "not due yet" } else { "nothing to relock" }
             log("\(callback): \(reason)", store, now)

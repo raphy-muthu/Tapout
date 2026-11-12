@@ -6,6 +6,7 @@ import SwiftUI
 /// the relock strategy, and the log shared with the monitor extension.
 /// Not a designed screen; it uses plain system list styling.
 struct LabView: View {
+    let model: AppModel
     @State private var engine = LockEngine.live()
     @ObservedObject private var center = AuthorizationCenter.shared
 
@@ -14,6 +15,9 @@ struct LabView: View {
             List {
                 accessSection
                 sessionSection
+                Section("Surfaces") {
+                    NavigationLink("Widgets") { SurfaceGallery(model: model) }
+                }
                 logSection
             }
             .navigationTitle("Lab")

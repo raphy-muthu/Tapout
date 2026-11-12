@@ -68,6 +68,7 @@ enum ScheduledLock {
     static func start(_ mode: Mode, store: SharedStore, shields: some Shielding, now: Date) -> Bool {
         guard store.session == .unlocked else { return false }
         store.activeModeID = mode.id
+        store.activeModeName = mode.name
         store.session = .locked(since: now)
         shields.apply(store.activeShieldPlan)
         return true

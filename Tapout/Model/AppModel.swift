@@ -65,6 +65,13 @@ final class AppModel {
         currentIntention = store.currentIntention
         interests = store.interests
         seenMilestones = Set(store.seenMilestones)
+        publishActiveModeName()
+    }
+
+    /// The widgets read the active mode's name from here, not from `modes` (which they can't decode).
+    private func publishActiveModeName() {
+        let name = activeMode.name
+        if store.activeModeName != name { store.activeModeName = name }
     }
 
     // MARK: Modes
@@ -255,6 +262,11 @@ final class AppModel {
     var unlockPlacesForActiveMode: [PairedTag] {
         let allowed = activeMode.unlockPlaces
         return allowed.isEmpty ? places : places.filter { allowed.contains($0.uid) }
+    }
+
+    /// What the Live Activity and the widgets show now, from the same store they read.
+    func lockSnapshot(at date: Date) -> LockSnapshot {
+        LockSnapshot.make(store: store, now: date)
     }
 
     /// Drops locks left open while the lock state says unlocked: nobody knows how long they really

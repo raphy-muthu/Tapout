@@ -106,6 +106,12 @@ struct ScheduledLockTests {
         #expect(shields.plans == [store.activeShieldPlan])
     }
 
+    @Test func startWritesTheModeNameForTheWidgets() {
+        store.modes = [mode]
+        ScheduledLock.start(mode, store: store, shields: FakeShields(), now: date(9, 13))
+        #expect(store.activeModeName == "Focus")
+    }
+
     @Test func startDoesNothingWhenAlreadyLocked() {
         let other = Mode(name: "Other")
         store.modes = [other, mode]

@@ -26,7 +26,7 @@ enum Appearance: String, CaseIterable, Identifiable {
 /// Owner preferences. App-only, so they live in standard defaults; views bind with `@AppStorage`.
 enum AppSettings {
     static let hapticsKey = "settings.haptics"
-    /// Stored only; the Live Activity arrives in Phase 5.
+    /// The Live Activity for a running lock. On unless the owner turned it off.
     static let liveActivityKey = "settings.liveActivity"
     static let appearanceKey = "settings.appearance"
     /// Set once onboarding is finished or skipped.

@@ -1,5 +1,6 @@
 import FamilyControls
 import SwiftUI
+import WidgetKit
 
 /// Screens pushed over the tabs. The tab bar belongs to the root, so pushed screens cover it.
 enum Route: Hashable {
@@ -44,6 +45,7 @@ struct RootView: View {
     @State private var screenTimeNeeded = false
     @AppStorage(AppSettings.appearanceKey) private var appearance = Appearance.system
     @AppStorage(AppSettings.onboardedKey) private var hasOnboarded = false
+    @AppStorage(AppSettings.liveActivityKey) private var liveActivity = true
 
     @Namespace private var lockMomentNamespace
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -141,7 +143,13 @@ struct RootView: View {
         }
         // A lock the monitor started (a schedule) gets its record here; for the app's own lock,
         // unlock, pass and relock the record is already right, so this changes nothing.
-        .onChange(of: engine.session) { _, session in model.reconcile(with: session) }
+        .onChange(of: engine.session) { _, session in
+            model.reconcile(with: session)
+            refreshSurfaces()
+        }
+        .onChange(of: liveActivity) { _, _ in refreshSurfaces() }
+        .onChange(of: model.activeMode.name) { _, _ in refreshSurfaces() }
+        .onChange(of: model.places.map(\.name)) { _, _ in refreshSurfaces() }
         // The foreground read of the status can be stale, so a revoke is also caught as it publishes.
         .onReceive(AuthorizationCenter.shared.$authorizationStatus) { _ in checkScreenTime() }
         .onChange(of: scenePhase) { _, phase in
@@ -150,6 +158,7 @@ struct RootView: View {
                 model.reconcile(with: engine.session)
                 model.syncSchedules()
                 checkScreenTime()
+                refreshSurfaces()
             }
         }
         .environment(\.lockMomentLink, reduceMotion ? nil
@@ -173,8 +182,15 @@ struct RootView: View {
             // Schedules made before notifications were asked for still lock while Tapout is closed.
             // Its own task, so the clock doesn't wait for the owner to answer the prompt.
             if hasOnboarded, model.hasRunnableSchedule, !Self.isDemo { Task { await NoticePermission.request() } }
+            refreshSurfaces()
             await runClock()
         }
+    }
+
+    /// Widgets and the Live Activity read the store; tell them it changed.
+    private func refreshSurfaces() {
+        WidgetCenter.shared.reloadAllTimelines()
+        LiveActivityController.sync(model.lockSnapshot(at: .now), enabled: liveActivity)
     }
 
     @ViewBuilder

@@ -42,7 +42,7 @@ struct SettingsView: View {
             if locked { pickingAllowed = false }
         }
         #if DEBUG
-        .sheet(isPresented: $showingLab) { LabView() }
+        .sheet(isPresented: $showingLab) { LabView(model: model) }
         #endif
     }
 

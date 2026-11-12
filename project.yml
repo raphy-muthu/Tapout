@@ -20,13 +20,16 @@ targets:
     sources:
       - path: Tapout
       - path: Shared
+      - path: Surfaces
     dependencies:
       - target: TapoutMonitor
       - target: TapoutShield
+      - target: TapoutWidgets
     info:
       path: Tapout/Info.plist
       properties:
         CFBundleDisplayName: Tapout
+        NSSupportsLiveActivities: true
         UILaunchScreen:
           UIColorName: bg
         UISupportedInterfaceOrientations:
@@ -113,6 +116,44 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.raphymuthu.tapout.shield
+        TARGETED_DEVICE_FAMILY: "1"
+  TapoutWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: TapoutWidgets
+      - path: Surfaces
+      - path: Shared
+      - path: Tapout/DesignSystem/Colors.xcassets
+      - path: Tapout/DesignSystem/Fonts
+      - path: Tapout/DesignSystem/Color+Tokens.swift
+      - path: Tapout/DesignSystem/Layout.swift
+      - path: Tapout/DesignSystem/FrauncesFace.swift
+      - path: Tapout/DesignSystem/Typography.swift
+      - path: Tapout/Components/OrbView.swift
+      - path: Tapout/Model/TimeFormat.swift
+      - path: Tapout/Model/Insights.swift
+    info:
+      path: TapoutWidgets/Info.plist
+      properties:
+        CFBundleDisplayName: Tapout
+        UIAppFonts:
+          - Fraunces-TapoutDisplay.ttf
+          - Fraunces-TapoutNumber.ttf
+          - Fraunces-TapoutTitle.ttf
+          - Fraunces-TapoutDisplayBold.ttf
+          - Fraunces-TapoutNumberBold.ttf
+          - Fraunces-TapoutTitleBold.ttf
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: TapoutWidgets/TapoutWidgets.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.raphymuthu.tapout
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.raphymuthu.tapout.widgets
         TARGETED_DEVICE_FAMILY: "1"
 schemes:
   Tapout:

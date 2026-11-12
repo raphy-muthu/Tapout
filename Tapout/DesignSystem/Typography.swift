@@ -7,6 +7,9 @@ extension Font {
     @MainActor static var numberDisplay: Font { Font.custom(FrauncesFace.display.resolved().rawValue, fixedSize: 48) }
     @MainActor static var numberMedium: Font { Font.custom(FrauncesFace.number.resolved().rawValue, fixedSize: 28) }
     @MainActor static var numberTile: Font { Font.custom(FrauncesFace.number.resolved().rawValue, fixedSize: 20) }
+    // For the 1080 × 1920 recap image only, fixed so Dynamic Type can't change it.
+    @MainActor static var recapWordmark: Font { Font.custom(FrauncesFace.title.resolved().rawValue, fixedSize: 20) }
+    @MainActor static var recapTotal: Font { Font.custom(FrauncesFace.display.resolved().rawValue, fixedSize: 67) }
     // Small numbers: SF Pro.
     static let numberSmall = Font.system(size: 17, weight: .medium).monospacedDigit()
     // Titles: Fraunces, scaling with Dynamic Type.
