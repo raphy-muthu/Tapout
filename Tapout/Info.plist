@@ -20,8 +20,12 @@
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>NFCReaderUsageDescription</key>
 	<string>Tapout reads your tag to lock and unlock your apps.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Tapout saves your weekly recap to Photos.</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>UIAppFonts</key>

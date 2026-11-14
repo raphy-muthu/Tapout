@@ -19,6 +19,7 @@ targets:
     platform: iOS
     sources:
       - path: Tapout
+        excludes: ["**/*.java"]
       - path: Shared
       - path: Surfaces
     dependencies:
@@ -30,6 +31,7 @@ targets:
       properties:
         CFBundleDisplayName: Tapout
         NSSupportsLiveActivities: true
+        ITSAppUsesNonExemptEncryption: false
         UILaunchScreen:
           UIColorName: bg
         UISupportedInterfaceOrientations:
@@ -44,6 +46,7 @@ targets:
           - Fraunces-TapoutNumberBold.ttf
           - Fraunces-TapoutTitleBold.ttf
         NFCReaderUsageDescription: Tapout reads your tag to lock and unlock your apps.
+        NSPhotoLibraryAddUsageDescription: Tapout saves your weekly recap to Photos.
         # Core NFC drops ISO 7816 tags without this list. This AID is the standard NDEF
         # application; Tapout only reads the tag's UID.
         com.apple.developer.nfc.readersession.iso7816.select-identifiers:
@@ -61,7 +64,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.raphymuthu.tapout
         TARGETED_DEVICE_FAMILY: "1"
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: ""
-        ASSETCATALOG_COMPILER_APPICON_NAME: "" # app icon arrives with the AppIcon screen
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
   TapoutTests:
     type: bundle.unit-test
     platform: iOS

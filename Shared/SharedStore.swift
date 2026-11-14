@@ -4,7 +4,7 @@ import os
 
 /// One line in the Lab log. The monitor extension writes here too, so the Lab can show
 /// when DeviceActivity callbacks really fired.
-struct LogEntry: Codable, Identifiable, Sendable {
+struct LogEntry: Codable, Identifiable, Equatable, Sendable {
     enum Source: String, Codable, Sendable {
         case app, monitor
     }

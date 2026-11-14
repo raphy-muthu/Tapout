@@ -17,6 +17,7 @@ private struct StatusFamilyView: View {
     let snapshot: LockSnapshot
     let date: Date
     @Environment(\.widgetFamily) private var family
+    @Environment(\.widgetRenderingMode) private var renderingMode
 
     var body: some View {
         switch family {
@@ -25,8 +26,19 @@ private struct StatusFamilyView: View {
         case .accessoryRectangular:
             RectangularFace(snapshot: snapshot, date: date).containerBackground(.clear, for: .widget)
         default:
-            SmallFace(snapshot: snapshot, date: date).containerBackground(Color.surface1, for: .widget)
+            SmallFace(snapshot: snapshot, date: date, tinted: renderingMode != .fullColor).containerBackground(Color.surface1, for: .widget)
         }
+    }
+}
+
+private struct WeekFamilyView: View {
+    let snapshot: LockSnapshot
+    let date: Date
+    @Environment(\.widgetRenderingMode) private var renderingMode
+
+    var body: some View {
+        MediumFace(snapshot: snapshot, date: date, tinted: renderingMode != .fullColor)
+            .containerBackground(Color.surface1, for: .widget)
     }
 }
 
@@ -34,8 +46,7 @@ private struct StatusFamilyView: View {
 struct WeekWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "tapout.week", provider: SnapshotProvider()) { entry in
-            MediumFace(snapshot: entry.snapshot, date: entry.date)
-                .containerBackground(Color.surface1, for: .widget)
+            WeekFamilyView(snapshot: entry.snapshot, date: entry.date)
         }
         .configurationDisplayName("This week")
         .description("Phone-free time this week.")

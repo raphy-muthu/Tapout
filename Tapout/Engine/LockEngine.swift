@@ -50,15 +50,31 @@ final class LockEngine {
         #endif
     }
 
-    /// Re-reads the store. The monitor extension may have relocked while Tapout was in the background.
+    /// Passes spent, as last read from the vault. Only the engine changes the vault, and every
+    /// change ends in `reload()`, so `tick()` can skip the Keychain.
+    @ObservationIgnored private var vaultUsed = 0
+
+    /// Re-reads the store and the pass vault. The monitor extension may have relocked while Tapout
+    /// was in the background.
     func reload() {
-        session = store.session
-        passesLeft = currentPassesLeft
-        relockStrategy = store.relockStrategy
-        log = store.log
+        vaultUsed = passes.used()
+        refresh()
     }
 
-    /// The lower of the two counts, so losing either one never refills a pass.
+    /// Re-reads the store only. Assigns only what changed, so a quiet tick redraws nothing.
+    private func refresh() {
+        let newSession = store.session
+        if newSession != session { session = newSession }
+        let newPasses = max(0, min(store.passesLeft, SharedStore.totalPasses - vaultUsed))
+        if newPasses != passesLeft { passesLeft = newPasses }
+        let newStrategy = store.relockStrategy
+        if newStrategy != relockStrategy { relockStrategy = newStrategy }
+        let newLog = store.log
+        if newLog != log { log = newLog }
+    }
+
+    /// The lower of the two counts, so losing either one never refills a pass. Reads the vault
+    /// itself, so spending never relies on the cached count.
     private var currentPassesLeft: Int {
         max(0, min(store.passesLeft, SharedStore.totalPasses - passes.used()))
     }
@@ -166,7 +182,7 @@ final class LockEngine {
             record("Relocked in app, \(Int(late))s after relock time")
             return true
         }
-        reload()
+        refresh()
         return false
     }
 

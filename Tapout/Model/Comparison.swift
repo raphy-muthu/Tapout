@@ -1,7 +1,7 @@
 import Foundation
 
 /// An everyday length of time to compare locked time with, keyed by interest. Approximate on purpose.
-struct Comparison: Equatable {
+struct Comparison: Equatable, Sendable {
     let interest: Interest
     /// "an entire NFL game"
     let phrase: String

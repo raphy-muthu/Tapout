@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// The weekly recap story from design/screens/Recap.dc.html, laid out at 360 × 640 points and
 /// rendered at 3× into a 1080 × 1920 image for sharing (Instagram Stories' size).
@@ -87,12 +88,35 @@ struct RecapView: View {
 }
 
 enum RecapImage {
-    /// The recap at 3×: 1080 × 1920 pixels.
-    @MainActor static func render(_ view: RecapView, colorScheme: ColorScheme) -> UIImage? {
+    /// The recap at `scale`x (3x is the shared 1080 x 1920 image; 1x is the share sheet thumbnail).
+    @MainActor static func render(_ view: RecapView, colorScheme: ColorScheme, scale: CGFloat = 3) -> UIImage? {
         let renderer = ImageRenderer(content: view.environment(\.colorScheme, colorScheme))
-        renderer.scale = 3
+        renderer.scale = scale
         renderer.proposedSize = ProposedViewSize(RecapView.size)
         return renderer.uiImage
+    }
+}
+
+/// The shared recap. The full image is rendered only when the share sheet asks for it.
+struct RecapShare: Transferable, Sendable {
+    let weekStart: Date
+    let total: TimeInterval
+    let days: [Insights.Day]
+    let comparison: Comparison?
+    let colorScheme: ColorScheme
+
+    func pngData() async -> Data? {
+        await MainActor.run {
+            let view = RecapView(weekStart: weekStart, total: total, days: days, comparison: comparison)
+            return RecapImage.render(view, colorScheme: colorScheme)?.pngData()
+        }
+    }
+
+    static var transferRepresentation: some TransferRepresentation {
+        DataRepresentation(exportedContentType: .png) { share in
+            guard let data = await share.pngData() else { throw CocoaError(.fileWriteUnknown) }
+            return data
+        }
     }
 }
 

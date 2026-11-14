@@ -10,6 +10,7 @@ import WidgetKit
 struct SmallFace: View {
     let snapshot: LockSnapshot
     var date: Date = .now
+    var tinted: Bool = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -22,6 +23,18 @@ struct SmallFace: View {
     }
 
     @ViewBuilder private var orb: some View {
+        if tinted {
+            if case .unlocked = snapshot.state(at: date) {
+                FlatOrb(ring: false, size: 64)
+            } else {
+                FlatOrb(ring: true, size: 64)
+            }
+        } else {
+            glassOrb
+        }
+    }
+
+    @ViewBuilder private var glassOrb: some View {
         switch snapshot.state(at: date) {
         case .locked: OrbView(tone: .ember, ring: 1, size: 64)
         case .open: OrbView(tone: .slate, ringTone: .ember, ring: 1, size: 64)
@@ -60,14 +73,11 @@ struct SmallFace: View {
 struct MediumFace: View {
     let snapshot: LockSnapshot
     var date: Date = .now
+    var tinted: Bool = false
 
     var body: some View {
         HStack(spacing: 20) {
-            if case .unlocked = snapshot.state(at: date) {
-                OrbView(tone: .slate, size: 112)
-            } else {
-                OrbView(tone: .ember, ring: 1, size: 112)
-            }
+            orb
             VStack(alignment: .leading, spacing: Space.sm) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(TimeFormat.short(snapshot.weekTotal)).font(.numberDisplay).foregroundStyle(Color.ink)
@@ -81,6 +91,17 @@ struct MediumFace: View {
         }
     }
 
+    @ViewBuilder private var orb: some View {
+        let unlocked: Bool = if case .unlocked = snapshot.state(at: date) { true } else { false }
+        if tinted {
+            FlatOrb(ring: !unlocked, size: 112)
+        } else if unlocked {
+            OrbView(tone: .slate, size: 112)
+        } else {
+            OrbView(tone: .ember, ring: 1, size: 112)
+        }
+    }
+
     private var bars: some View {
         let peak = max(snapshot.days.map(\.lockedTime).max() ?? 0, 1)
         return HStack(alignment: .bottom, spacing: 5) {
@@ -89,9 +110,29 @@ struct MediumFace: View {
                     .fill(day.isToday ? Color.ember : Color.surface2)
                     .frame(maxWidth: .infinity)
                     .frame(height: 6 + 34 * day.lockedTime / peak)
+                    .widgetAccentable(tinted && day.isToday)
             }
         }
         .frame(height: 40, alignment: .bottom)
+        .accessibilityHidden(true)
+    }
+}
+
+/// The orb for tinted and clear Home Screen widgets, where iOS flattens colour: a soft disc, and
+/// the seal ring drawn in the accent group so it takes the tint.
+struct FlatOrb: View {
+    var ring: Bool
+    var size: CGFloat
+
+    var body: some View {
+        ZStack {
+            // The one non-token colour: in tinted mode iOS replaces colour, so a neutral is correct.
+            Circle().fill(.white.opacity(0.18)).frame(width: size * 0.74, height: size * 0.74)
+            if ring {
+                Circle().stroke(lineWidth: size * 0.05).widgetAccentable()
+            }
+        }
+        .frame(width: size, height: size)
         .accessibilityHidden(true)
     }
 }
@@ -210,3 +251,24 @@ private struct FacePreview<Face: View>: View {
 #Preview("Circular · 10h 47m · light") { FacePreview(width: 76, height: 76, scheme: .light) { CircularFace(snapshot: previewLockedVeryLong) } }
 #Preview("Rectangular · 10h 47m · dark") { FacePreview(width: 172, height: 76, scheme: .dark) { RectangularFace(snapshot: previewLockedVeryLong) } }
 #Preview("Rectangular · 10h 47m · light") { FacePreview(width: 172, height: 76, scheme: .light) { RectangularFace(snapshot: previewLockedVeryLong) } }
+
+private struct TintedPreview<Face: View>: View {
+    let width: CGFloat
+    let height: CGFloat
+    @ViewBuilder let face: Face
+
+    var body: some View {
+        face
+            .padding(16)
+            .frame(width: width, height: height)
+            .background(Color.slate.opacity(0.35), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .padding(16)
+            .background(Color.bg)
+            .environment(\.colorScheme, .dark)
+    }
+}
+
+#Preview("Small · locked · tinted") { TintedPreview(width: 170, height: 170) { SmallFace(snapshot: previewLocked, tinted: true) } }
+#Preview("Small · open · tinted") { TintedPreview(width: 170, height: 170) { SmallFace(snapshot: previewOpen, tinted: true) } }
+#Preview("Small · unlocked · tinted") { TintedPreview(width: 170, height: 170) { SmallFace(snapshot: previewUnlocked, tinted: true) } }
+#Preview("Medium · tinted") { TintedPreview(width: 364, height: 170) { MediumFace(snapshot: previewLocked, tinted: true) } }

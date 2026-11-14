@@ -35,7 +35,7 @@ struct InsightsView: View {
                                 interests: Array(model.interests), days: days.map(\.lockedTime))
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                header(total: total)
+                header(total: total, weekStart: weekStart, days: days, comparison: comparison)
                 VStack(alignment: .leading, spacing: Space.xxs) {
                     // A total that moves once a minute at most, not a ticking clock, so plain Text: at this
                     // size FixedDigitText's slots split "13h" into "1 3h" and pull it off the left edge.
@@ -61,22 +61,25 @@ struct InsightsView: View {
             .padding(.bottom, Space.lg)
         }
         .scrollIndicators(.hidden)
-        // Re-render only when something the image shows changes: at most once a minute.
+        // Re-render the 1x thumbnail only when something the image shows changes: at most once a minute.
+        // The full-size image is rendered when the share sheet asks for it.
         .task(id: recapKey) {
             recap = nil
             let view = RecapView(weekStart: weekStart, total: total, days: days, comparison: comparison)
-            if let image = RecapImage.render(view, colorScheme: colorScheme) { recap = Image(uiImage: image) }
+            if let image = RecapImage.render(view, colorScheme: colorScheme, scale: 1) { recap = Image(uiImage: image) }
         }
     }
 
-    private func header(total: TimeInterval) -> some View {
+    private func header(total: TimeInterval, weekStart: Date, days: [Insights.Day], comparison: Comparison?) -> some View {
         HStack {
             Text("This week").font(.tHeadline).foregroundStyle(Color.ink).accessibilityAddTraits(.isHeader)
             Spacer()
             if total > 0 {
                 let text = "\(TimeFormat.short(total)) phone-free this week, with Tapout."
                 if let recap {
-                    ShareLink(item: recap, message: Text(text),
+                    ShareLink(item: RecapShare(weekStart: weekStart, total: total, days: days,
+                                               comparison: comparison, colorScheme: colorScheme),
+                              message: Text(text),
                               preview: SharePreview("Your week", image: recap)) {
                         shareIcon
                     }

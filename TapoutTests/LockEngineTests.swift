@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 import Testing
 @testable import Tapout
 
@@ -6,6 +7,15 @@ private struct FailingVault: PassCounting {
     func used() -> Int { 0 }
     func setUsed(_ count: Int) -> Bool { false }
 }
+
+private final class CountingVault: PassCounting {
+    private(set) var reads = 0
+    private var count = 0
+    func used() -> Int { reads += 1; return count }
+    @discardableResult func setUsed(_ count: Int) -> Bool { self.count = count; return true }
+}
+
+private final class Flag: @unchecked Sendable { var set = false }
 
 /// KVO on the store's session key. UserDefaults notifies synchronously on the writing thread.
 private final class SessionWatcher: NSObject, @unchecked Sendable {
@@ -198,6 +208,46 @@ struct LockEngineTests {
         #expect(shields.applied == 2)
         // The monitor schedule stays running, so its callback still shows up in the log.
         #expect(relock.cancelled == 0)
+    }
+
+    @Test func tickDoesNotReadTheVault() {
+        let counting = CountingVault()
+        let engine = LockEngine(store: store, shields: shields, relock: relock, passes: counting, now: { [clock] in clock.now })
+        engine.lock()
+        let before = counting.reads
+        for _ in 0..<10 { engine.tick() }
+        #expect(counting.reads == before)
+    }
+
+    /// After a pass, only the vault holds the lower count. `tick()` must still show one pass spent,
+    /// which it can only do if `useEmergencyPass` refreshed the engine's cached vault count.
+    @Test func cachedVaultCountIsRefreshedByAPass() throws {
+        let counting = CountingVault()
+        let engine = LockEngine(store: store, shields: shields, relock: relock, passes: counting, now: { [clock] in clock.now })
+        engine.lock()
+        try engine.useEmergencyPass()
+        store.passesLeft = SharedStore.totalPasses
+        engine.tick()
+        #expect(engine.passesLeft == SharedStore.totalPasses - 1)
+    }
+
+    @Test func quietTickChangesNothingObservable() throws {
+        let engine = lockedEngine()
+        let changed = Flag()
+        func track() {
+            withObservationTracking {
+                _ = engine.session
+                _ = engine.passesLeft
+                _ = engine.relockStrategy
+                _ = engine.log
+            } onChange: { changed.set = true }
+        }
+        track()
+        engine.tick()
+        #expect(!changed.set)
+        store.session = .unlocked
+        engine.tick()
+        #expect(changed.set)
     }
 
     @Test func tickPicksUpARelockMadeByTheMonitor() throws {

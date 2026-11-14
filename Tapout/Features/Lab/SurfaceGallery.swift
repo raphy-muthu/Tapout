@@ -18,6 +18,7 @@ struct SurfaceGallery: View {
                 row("Locked · 10h 47m", .sampleLocked(for: LockSnapshot.sampleLockLengths[2]))
                 row("Open", .sample(.open(relockAt: .now + 272, resumesFrom: .now - 2832)))
                 row("Unlocked", .sample(.unlocked))
+                tintedSection
                 liveActivityRow
             }
             .padding(Space.md)
@@ -38,6 +39,29 @@ struct SurfaceGallery: View {
             }
             tile(MediumFace(snapshot: snapshot, date: date), width: 364, height: 170)
         }
+    }
+
+    /// The flat-orb faces iOS draws in tinted and clear modes, on a slate wash standing in for a tinted Home Screen.
+    private var tintedSection: some View {
+        let small: [(String, LockSnapshot)] = [
+            ("Locked", .sample(.locked(countingFrom: .now - 2832))),
+            ("Open", .sample(.open(relockAt: .now + 272, resumesFrom: .now - 2832))),
+            ("Unlocked", .sample(.unlocked)),
+        ]
+        return VStack(alignment: .leading, spacing: Space.xs) {
+            Text("Tinted").font(.tHeadline)
+            ForEach(small, id: \.0) { _, snapshot in
+                tintedTile(SmallFace(snapshot: snapshot, tinted: true), width: 170, height: 170)
+            }
+            tintedTile(MediumFace(snapshot: small[0].1, tinted: true), width: 364, height: 170)
+        }
+    }
+
+    private func tintedTile(_ face: some View, width: CGFloat, height: CGFloat) -> some View {
+        face
+            .padding(16)
+            .frame(width: width, height: height)
+            .background(Color.slate.opacity(0.35), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
 
     private var liveActivityRow: some View {
