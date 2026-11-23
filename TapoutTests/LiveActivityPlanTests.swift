@@ -66,4 +66,87 @@ struct LiveActivityPlanTests {
         #expect(LiveActivityPlan.countsAsCurrent(.stale))
         #expect(!LiveActivityPlan.countsAsCurrent(.over))
     }
+
+    // MARK: Timer lock
+
+    @Test func aTimerLockCarriesItsEndInWholeSeconds() throws {
+        let timed = LockSnapshot.sample(.locked(countingFrom: now), timerEndsAt: now + 1800.0004)
+        let state = try #require(LiveActivityPlan.content(for: timed))
+        #expect(state.timerEndsAt == now + 1800)
+        #expect(LiveActivityPlan.content(for: shot(.locked(countingFrom: now)))?.timerEndsAt == nil)
+    }
+
+    @Test func aPassKeepsTheTimersEnd() throws {
+        let open = LockSnapshot.sample(.open(relockAt: now + 300, resumesFrom: now), timerEndsAt: now + 1800)
+        #expect(try #require(LiveActivityPlan.content(for: open)).timerEndsAt == now + 1800)
+    }
+
+    @Test func aChangedEndDateAloneUpdatesIt() throws {
+        let before = LockSnapshot.sample(.locked(countingFrom: now), timerEndsAt: now + 1800)
+        let after = LockSnapshot.sample(.locked(countingFrom: now), timerEndsAt: now + 2400)
+        let running = LiveActivityPlan.content(for: before)
+        let wanted = try #require(LiveActivityPlan.content(for: after))
+        #expect(LiveActivityPlan.decide(snapshot: after, enabled: true, current: running) == .update(wanted))
+        #expect(LiveActivityPlan.decide(snapshot: before, enabled: true, current: running) == .none)
+    }
+
+    @Test func startingATimerOnARunningLockUpdatesIt() throws {
+        let plain = LiveActivityPlan.content(for: shot(.locked(countingFrom: now)))
+        let timed = LockSnapshot.sample(.locked(countingFrom: now), timerEndsAt: now + 1800)
+        let wanted = try #require(LiveActivityPlan.content(for: timed))
+        #expect(LiveActivityPlan.decide(snapshot: timed, enabled: true, current: plain) == .update(wanted))
+    }
+
+    @Test func theContentStateRoundTripsWithAndWithoutAnEndDate() throws {
+        let timed = LockActivityAttributes.ContentState(lockedFrom: now, openUntil: nil, modeName: "Deep work",
+                                                        placeName: nil, timerEndsAt: now + 1800)
+        let plain = LockActivityAttributes.ContentState(lockedFrom: now, openUntil: nil, modeName: "Deep work", placeName: nil)
+        #expect(plain.timerEndsAt == nil)
+        for state in [timed, plain] {
+            let data = try JSONEncoder().encode(state)
+            #expect(try JSONDecoder().decode(LockActivityAttributes.ContentState.self, from: data) == state)
+        }
+    }
+
+    @Test func aContentStateWrittenBeforeTimersStillDecodes() throws {
+        let old = #"{"lockedFrom":800000000,"modeName":"Deep work"}"#
+        let state = try JSONDecoder().decode(LockActivityAttributes.ContentState.self, from: Data(old.utf8))
+        #expect(state.lockedFrom == now)
+        #expect(state.timerEndsAt == nil)
+        #expect(state.openUntil == nil)
+    }
+    // MARK: Stale date and the done look
+
+    private func state(openUntil: Date? = nil, timerEndsAt: Date? = nil) -> LockActivityAttributes.ContentState {
+        .init(lockedFrom: now - 600, openUntil: openUntil, modeName: "Deep work", placeName: nil, timerEndsAt: timerEndsAt)
+    }
+
+    @Test func aPlainLockHasNoStaleDate() {
+        #expect(LiveActivityPlan.staleDate(for: state()) == nil)
+    }
+
+    @Test func aPassGoesStaleAtItsRelock() {
+        #expect(LiveActivityPlan.staleDate(for: state(openUntil: now + 300)) == now + 300)
+    }
+
+    @Test func aTimerGoesStaleAtItsEnd() {
+        #expect(LiveActivityPlan.staleDate(for: state(timerEndsAt: now + 900)) == now + 900)
+    }
+
+    @Test func aPassDuringATimerGoesStaleAtTheEarlierOfTheTwo() {
+        #expect(LiveActivityPlan.staleDate(for: state(openUntil: now + 300, timerEndsAt: now + 900)) == now + 300)
+        #expect(LiveActivityPlan.staleDate(for: state(openUntil: now + 300, timerEndsAt: now + 120)) == now + 120)
+    }
+
+    @Test func aStaleTimerReadsAsDone() {
+        #expect(state(timerEndsAt: now).timerIsOver(isStale: true))
+        #expect(state(openUntil: now + 300, timerEndsAt: now + 120).timerIsOver(isStale: true))
+    }
+
+    @Test func aRunningTimerOrAStalePassBeforeTheTimersEndIsNotDone() {
+        #expect(!state(timerEndsAt: now).timerIsOver(isStale: false))
+        #expect(!state(openUntil: now + 300, timerEndsAt: now + 900).timerIsOver(isStale: true))
+        #expect(!state(openUntil: now + 300).timerIsOver(isStale: true))
+        #expect(!state().timerIsOver(isStale: true))
+    }
 }

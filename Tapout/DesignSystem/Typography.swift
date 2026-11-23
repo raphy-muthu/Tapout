@@ -10,6 +10,8 @@ extension Font {
     // For the 1080 × 1920 recap image only, fixed so Dynamic Type can't change it.
     @MainActor static var recapWordmark: Font { Font.custom(FrauncesFace.title.resolved().rawValue, fixedSize: 20) }
     @MainActor static var recapTotal: Font { Font.custom(FrauncesFace.display.resolved().rawValue, fixedSize: 67) }
+    // The milestone cover's hero title: a step above tLargeTitle, still scaling with Dynamic Type.
+    @MainActor static var milestoneTitle: Font { Font.custom(FrauncesFace.title.resolved().rawValue, size: 44, relativeTo: .largeTitle) }
     // Small numbers: SF Pro.
     static let numberSmall = Font.system(size: 17, weight: .medium).monospacedDigit()
     // Titles: Fraunces, scaling with Dynamic Type.

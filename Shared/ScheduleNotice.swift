@@ -14,6 +14,27 @@ enum ScheduleNotice {
         case .noTag: (mode.name, "Didn't lock: no tag paired.")
         }
     }
+
+    /// A timer lock ended by itself.
+    static func timerFinished(duration: TimeInterval) -> (title: String, body: String) {
+        ("Time's up", "\(length(duration)) locked. Your apps are open.")
+    }
+
+    /// A timer lock ended inside `mode`'s scheduled window, so the mode's scheduled lock took over.
+    static func timerHandedOver(_ mode: Mode) -> (title: String, body: String) {
+        (mode.name, "Timer done. Locked until you tap a tag.")
+    }
+
+    /// "45 min", "1 h" or "1 h 30 min". `TimeFormat` lives in the app target, not `Shared`.
+    private static func length(_ duration: TimeInterval) -> String {
+        let minutes = max(0, Int((duration / 60).rounded()))
+        let hours = minutes / 60, rest = minutes % 60
+        switch (hours, rest) {
+        case (0, _): return "\(rest) min"
+        case (_, 0): return "\(hours) h"
+        default: return "\(hours) h \(rest) min"
+        }
+    }
 }
 
 /// Posts a notification. A protocol, so tests can record instead.

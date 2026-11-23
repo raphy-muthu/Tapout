@@ -5,7 +5,7 @@ import os
 import WidgetKit
 
 /// Runs in its own process, woken by DeviceActivity. Starts scheduled locks when a mode's window
-/// begins (schedules never unlock), relocks an emergency pass at its relock time, and logs every
+/// begins (schedules never unlock), relocks an emergency pass at its relock time, ends a timer lock, and logs every
 /// callback so the Lab shows when it fired.
 final class TapoutMonitor: DeviceActivityMonitor {
     /// A second timing record, independent of the shared log (read it in Console.app).
@@ -32,6 +32,7 @@ final class TapoutMonitor: DeviceActivityMonitor {
 
     override func intervalWillEndWarning(for activity: DeviceActivityName) {
         super.intervalWillEndWarning(for: activity)
+        if activity == TimerPlan.activity { return endTimer(callback: "intervalWillEndWarning") }
         relock(activity, callback: "intervalWillEndWarning")
     }
 
@@ -42,6 +43,7 @@ final class TapoutMonitor: DeviceActivityMonitor {
             log("Schedule window ended: \(activity.rawValue)", SharedStore.appGroup(), Date())
             return
         }
+        if activity == TimerPlan.activity { return endTimer(callback: "intervalDidEnd") }
         relock(activity, callback: "intervalDidEnd")
     }
 
@@ -53,21 +55,34 @@ final class TapoutMonitor: DeviceActivityMonitor {
         return status == .denied ? .denied : .notDetermined
     }
 
+    /// The access rule a schedule start uses, for a timer handing over to a schedule.
+    private static func accessApproved(_ store: SharedStore) -> Bool {
+        ScheduledLock.accessApproved(live: liveAccess, mirrored: store.screenTimeApproved)
+    }
+
     private func log(_ line: String, _ store: SharedStore, _ now: Date) {
         Self.logger.info("\(line, privacy: .public) at \(now.formatted(date: .omitted, time: .standard), privacy: .public)")
         store.appendLog(line, source: .monitor, at: now)
     }
 
+    /// The pass relock. A due timer is finished first (`TimerLock.runMonitorRelock`), so the relock never
+    /// re-locks a timer that is over.
     private func relock(_ activity: DeviceActivityName, callback: String) {
         guard activity == RelockPlan.activity else { return }
         let store = SharedStore.appGroup()
         let now = Date()
-        if let late = EmergencyRelock.perform(store: store, shields: ShieldController(), now: now) {
-            log("\(callback): relocked, \(Int(late))s after relock time", store, now)
-            WidgetCenter.shared.reloadAllTimelines()
-        } else {
-            let reason = if case .emergency = store.session { "not due yet" } else { "nothing to relock" }
-            log("\(callback): \(reason)", store, now)
-        }
+        let run = TimerLock.runMonitorRelock(store: store, shields: ShieldController(), notifier: LocalNotifier(), now: now,
+                                             accessApproved: Self.accessApproved(store))
+        for line in run.lines { log("\(callback): \(line)", store, now) }
+        if run.changed { WidgetCenter.shared.reloadAllTimelines() }
+    }
+
+    private func endTimer(callback: String) {
+        let store = SharedStore.appGroup()
+        let now = Date()
+        let line = TimerLock.runMonitorEnd(store: store, shields: ShieldController(), notifier: LocalNotifier(), now: now,
+                                           accessApproved: Self.accessApproved(store))
+        log("\(callback): \(line)", store, now)
+        WidgetCenter.shared.reloadAllTimelines()
     }
 }

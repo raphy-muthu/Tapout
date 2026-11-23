@@ -29,14 +29,15 @@ extension ModeSchedule {
 /// checks the weekday itself, because one activity per weekday would soon pass DeviceActivity's limit.
 enum ModeActivity {
     static let prefix = "tapout.mode."
-    /// DeviceActivity throws `excessiveActivities` past its limit; one slot stays free for the emergency relock.
-    static let limit = 19
+    /// DeviceActivity throws `excessiveActivities` past 20 activities; two slots stay free: the emergency relock
+    /// and the timer lock (18 modes + 2 = 20).
+    static let limit = 18
 
     static func name(for modeID: UUID) -> DeviceActivityName {
         DeviceActivityName(prefix + modeID.uuidString)
     }
 
-    /// The mode behind an activity, or nil for anything else (the emergency relock).
+    /// The mode behind an activity, or nil for anything else (the emergency relock, the timer).
     static func modeID(of activity: DeviceActivityName) -> UUID? {
         guard activity.rawValue.hasPrefix(prefix) else { return nil }
         return UUID(uuidString: String(activity.rawValue.dropFirst(prefix.count)))

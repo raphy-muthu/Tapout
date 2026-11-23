@@ -20,10 +20,13 @@ struct LockActivityWidget: Widget {
                     IslandTimer(state: context.state, isStale: context.isStale)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    Label("Tap a tag to unlock", systemImage: "wave.3.right")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(Color.emberInk)
-                        .environment(\.colorScheme, .dark)
+                    // Nothing to unlock once a timer has ended.
+                    if !context.state.timerIsOver(isStale: context.isStale) {
+                        Label("Tap a tag to unlock", systemImage: "wave.3.right")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(Color.emberInk)
+                            .environment(\.colorScheme, .dark)
+                    }
                 }
             } compactLeading: {
                 IslandOrb(state: context.state, isStale: context.isStale, size: 26)
@@ -42,6 +45,8 @@ private extension LockActivityAttributes.ContentState {
     static let locked = LockActivityAttributes.ContentState(lockedFrom: .now - 2832, openUntil: nil, modeName: "Deep work", placeName: "Kitchen")
     static let open = LockActivityAttributes.ContentState(lockedFrom: .now - 2832, openUntil: .now + 272, modeName: "Deep work", placeName: "Kitchen")
     static let veryLong = LockActivityAttributes.ContentState.sample(lockedFor: LockSnapshot.sampleLockLengths[2])
+    static let timer = LockActivityAttributes.ContentState.sampleTimer(
+        length: LockSnapshot.sampleTimers[0].length, left: LockSnapshot.sampleTimers[0].left)
 }
 
 #Preview("Island", as: .dynamicIsland(.expanded), using: LockActivityAttributes()) {
@@ -50,6 +55,7 @@ private extension LockActivityAttributes.ContentState {
     LockActivityAttributes.ContentState.locked
     LockActivityAttributes.ContentState.open
     LockActivityAttributes.ContentState.veryLong
+    LockActivityAttributes.ContentState.timer
 }
 
 #Preview("Compact", as: .dynamicIsland(.compact), using: LockActivityAttributes()) {
@@ -58,6 +64,7 @@ private extension LockActivityAttributes.ContentState {
     LockActivityAttributes.ContentState.locked
     LockActivityAttributes.ContentState.open
     LockActivityAttributes.ContentState.veryLong
+    LockActivityAttributes.ContentState.timer
 }
 
 #Preview("Minimal", as: .dynamicIsland(.minimal), using: LockActivityAttributes()) {
@@ -66,6 +73,7 @@ private extension LockActivityAttributes.ContentState {
     LockActivityAttributes.ContentState.locked
     LockActivityAttributes.ContentState.open
     LockActivityAttributes.ContentState.veryLong
+    LockActivityAttributes.ContentState.timer
 }
 
 #Preview("Lock Screen", as: .content, using: LockActivityAttributes()) {
@@ -74,5 +82,6 @@ private extension LockActivityAttributes.ContentState {
     LockActivityAttributes.ContentState.locked
     LockActivityAttributes.ContentState.open
     LockActivityAttributes.ContentState.veryLong
+    LockActivityAttributes.ContentState.timer
 }
 #endif

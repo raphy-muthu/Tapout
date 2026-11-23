@@ -22,6 +22,8 @@ final class AppModel {
     private(set) var history: [LockRecord] = []
     private(set) var alwaysAllowed = FamilyActivitySelection()
     private(set) var currentIntention: String?
+    /// The running timer lock, from the store, so the UI can follow it.
+    private(set) var timerLock: TimerLock?
     private(set) var interests: [Interest] = []
     private(set) var seenMilestones: Set<String> = []
 
@@ -63,6 +65,7 @@ final class AppModel {
         history = store.lockHistory
         alwaysAllowed = store.alwaysAllowed
         currentIntention = store.currentIntention
+        timerLock = store.timerLock
         interests = store.interests
         seenMilestones = Set(store.seenMilestones)
         publishActiveModeName()
@@ -264,6 +267,9 @@ final class AppModel {
         return allowed.isEmpty ? places : places.filter { allowed.contains($0.uid) }
     }
 
+    /// Whether the active mode blocks anything, with the always-allowed apps taken out. A timer lock needs it.
+    var activeModeHasApps: Bool { !store.activeShieldPlan.isEmpty }
+
     /// What the Live Activity and the widgets show now, from the same store they read.
     func lockSnapshot(at date: Date) -> LockSnapshot {
         LockSnapshot.make(store: store, now: date)
@@ -271,7 +277,9 @@ final class AppModel {
 
     /// Drops locks left open while the lock state says unlocked: nobody knows how long they really
     /// ran, so they don't count. `reconcile(with:)` calls this at launch; `startLock` calls it too.
+    /// A finished timer's record is kept, for `closeFinishedTimer()` to end at the timer's end.
     func discardInterruptedLocks() {
+        guard pendingFinishedTimer == nil else { return }
         guard store.lockHistory.contains(where: { $0.end == nil }) || store.currentIntention != nil else { return }
         store.lockHistory.removeAll { $0.end == nil }
         store.currentIntention = nil
@@ -280,6 +288,8 @@ final class AppModel {
 
     /// Records the start of a lock with the active mode. A blank intention counts as none.
     func startLock(placeUID: TagUID?, intention: String?) {
+        // A timer that ended while Tapout was closed is closed at its end first, so two records never stay open.
+        closeFinishedTimer()
         discardInterruptedLocks()
         let trimmed = intention?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let intention = trimmed.isEmpty ? nil : String(trimmed.prefix(Self.intentionLimit))
@@ -293,6 +303,13 @@ final class AppModel {
     /// Ends the running lock and returns it, or nil when none was running.
     @discardableResult
     func finishLock() -> LockRecord? {
+        finishLock(at: now())
+    }
+
+    /// Ends the running lock at `end` (a timer's end time, which may be earlier than now) and returns it.
+    /// An open pass ends there too. The end is never before the start.
+    @discardableResult
+    func finishLock(at end: Date) -> LockRecord? {
         var all = store.lockHistory
         guard let index = all.lastIndex(where: { $0.end == nil }) else {
             if store.currentIntention != nil {
@@ -301,12 +318,57 @@ final class AppModel {
             }
             return nil
         }
-        all[index].endPass(at: now())
-        all[index].end = now()
+        let end = max(end, all[index].start)
+        all[index].endPass(at: end)
+        all[index].end = end
         store.lockHistory = all
         store.currentIntention = nil
         reload()
         return all[index]
+    }
+
+    struct TimerFinish: Equatable {
+        let timer: TimerLock
+        let record: LockRecord?
+        /// The mode whose scheduled lock took over at the timer's end, or nil when the apps opened.
+        var handedOverTo: String? = nil
+
+        /// The unlock haptic plays for a timer that ended while Tapout was open (`heard`) and opened the apps.
+        /// A hand-over opened nothing, so it stays quiet; its Time's up cover still shows.
+        func playsUnlockHaptic(heard: Bool) -> Bool { heard && handedOverTo == nil }
+    }
+
+    /// `store.finishedTimer`, unless it is a late write of a timer the app already ended or closed.
+    private var pendingFinishedTimer: TimerLock? {
+        store.finishedTimer.flatMap { TimerLock.wasClosed($0, store: store) ? nil : $0 }
+    }
+
+    /// When a timer ended (in the app, or in the monitor while Tapout was closed) and nobody has closed its
+    /// record yet: ends the open record at the timer's end, clears the marker and the intention, and returns
+    /// both for the "Time's up" moment, with the mode a hand-over went to. nil when no timer finished. A record
+    /// that started at or after the timer's end belongs to a newer lock (a hand-over's scheduled lock, say) and is left alone.
+    /// The same timer is closed once: a second finish of it (the monitor's write landing after the app closed
+    /// it, or after a tag ended it) only clears the marker and returns nil, so Time's up never shows twice.
+    @discardableResult
+    func closeFinishedTimer() -> TimerFinish? {
+        guard store.finishedTimer != nil else { return nil }
+        let handover = store.finishedTimerHandover
+        guard let timer = pendingFinishedTimer else {
+            store.finishedTimer = nil
+            store.finishedTimerHandover = nil
+            reload()
+            return nil
+        }
+        store.lastClosedTimerStart = timer.start
+        var record: LockRecord?
+        if let open = store.lockHistory.last(where: { $0.end == nil }), open.start < timer.endsAt {
+            record = finishLock(at: timer.endsAt)
+        }
+        store.finishedTimer = nil
+        store.finishedTimerHandover = nil
+        store.currentIntention = nil
+        reload()
+        return TimerFinish(timer: timer, record: record, handedOverTo: handover)
     }
 
     /// Saves the answer to "Did you do it?" for the lock that started at `start`.
@@ -350,11 +412,28 @@ final class AppModel {
     /// Matches the history to the lock state at launch. The lock state wins: shields follow it,
     /// it survives quitting, and the monitor can relock while Tapout is closed.
     /// It re-reads the store first: the monitor may have made a scheduled mode active.
+    /// The engine's lock state changed. When it changed because a timer ended (the monitor may finish it before
+    /// the app's own tick), the timer is closed here and returned for the Time's up moment; then the history is
+    /// matched to the state. A timer that handed over to a schedule leaves the session locked, so its marker
+    /// is what tells. nil for any other change, and for a timer already closed.
+    @discardableResult
+    func sessionChanged(to session: LockSession) -> TimerFinish? {
+        let finish = session == .unlocked || store.finishedTimerHandover != nil ? closeFinishedTimer() : nil
+        reconcile(with: session)
+        return finish
+    }
+
     func reconcile(with session: LockSession) {
         reload()
         if case .unlocked = session {
+            // A finished timer's record stays open until `closeFinishedTimer()`.
             discardInterruptedLocks()
             return
+        }
+        // A lock that began after a timer ended (a schedule, say) must not inherit the timer's record.
+        if let finished = pendingFinishedTimer, store.timerLock == nil,
+           let open = store.lockHistory.last(where: { $0.end == nil }), open.start < finished.endsAt {
+            finishLock(at: finished.endsAt)
         }
         var all = store.lockHistory
         // More than one open record is left over from a crash. Keep the newest.
@@ -370,7 +449,10 @@ final class AppModel {
                 // Ends a pass that was relocked early. No change for a normal relock.
                 all[index].endPass(at: since)
             } else {
-                all.append(LockRecord(start: since, end: nil, placeUID: nil, modeID: activeMode.id))
+                // Never before the end of the last record: a timer the monitor finished up to a minute early
+                // hands over from `since`, but the timer's record runs to its end.
+                let start = max(since, all.compactMap(\.end).max() ?? since)
+                all.append(LockRecord(start: start, end: nil, placeUID: nil, modeID: activeMode.id))
             }
         case .emergency(let relockAt, let duration):
             if let index {

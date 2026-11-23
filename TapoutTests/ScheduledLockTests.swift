@@ -125,6 +125,27 @@ struct ScheduledLockTests {
         #expect(shields.applied == 0)
     }
 
+    @Test func startDropsAStaleTimerSoTheScheduleIsNeverEndedAsIt() {
+        store.modes = [mode]
+        let stale = TimerLock(start: date(9, 12, 50), duration: 30 * 60) // ends 13:20, not due
+        store.timerLock = stale
+        #expect(ScheduledLock.start(mode, store: store, shields: FakeShields(), now: date(9, 13)))
+        #expect(store.timerLock == nil)
+        #expect(store.finishedTimer == nil)
+        #expect(TimerLock.finish(store: store, shields: FakeShields(), now: date(9, 13, 30), early: 0,
+                                 accessApproved: true) == nil)
+        #expect(store.session == .locked(since: date(9, 13)))
+    }
+
+    @Test func startMovesAStaleDueTimerToFinished() {
+        store.modes = [mode]
+        let stale = TimerLock(start: date(9, 12), duration: 45 * 60) // ended 12:45
+        store.timerLock = stale
+        #expect(ScheduledLock.start(mode, store: store, shields: FakeShields(), now: date(9, 13)))
+        #expect(store.timerLock == nil)
+        #expect(store.finishedTimer == stale)
+    }
+
     @Test func quietSkipsWinOverMissingAccess() {
         store.session = .locked(since: date(9, 12))
         guard case .skipQuietly = decide(at: date(9, 13), access: false) else {

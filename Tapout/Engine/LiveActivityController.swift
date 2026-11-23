@@ -25,7 +25,7 @@ enum LiveActivityController {
             end(extras)
             do {
                 _ = try Activity.request(attributes: LockActivityAttributes(),
-                                         content: ActivityContent(state: state, staleDate: state.openUntil),
+                                         content: ActivityContent(state: state, staleDate: LiveActivityPlan.staleDate(for: state)),
                                          pushType: nil)
             } catch {
                 logger.error("Live Activity request failed: \(error.localizedDescription, privacy: .public)")
@@ -46,7 +46,7 @@ enum LiveActivityController {
     // Nonisolated, so the activities they look up never cross from the main actor (Swift 6 region isolation).
     private nonisolated static func update(id: String, to state: LockActivityAttributes.ContentState) async {
         let activity = Activity<LockActivityAttributes>.activities.first { $0.id == id }
-        await activity?.update(ActivityContent(state: state, staleDate: state.openUntil))
+        await activity?.update(ActivityContent(state: state, staleDate: LiveActivityPlan.staleDate(for: state)))
     }
 
     private nonisolated static func end(ids: [String]) async {

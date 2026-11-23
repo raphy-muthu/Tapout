@@ -19,15 +19,29 @@ struct LockSnapshot: Equatable, Sendable {
     /// Locked time this week, and per day for the bars.
     var weekTotal: TimeInterval
     var days: [Insights.Day]
+    /// While a timer lock is running (locked or in a pass, and not yet due), when it ends. The faces count
+    /// down to it instead of up. A field, not a `State`, so every switch over the state keeps working.
+    var timerEndsAt: Date?
 
     static func make(store: SharedStore, now: Date, calendar: Calendar = .current) -> LockSnapshot {
         let history = store.lockHistory
         let running = history.last { $0.end == nil }
         let place = running?.placeUID.flatMap { uid in store.pairedTags.first { $0.uid == uid }?.name }
+        // A timer that has come due reads as the unlock it is about to be, even before the app or the
+        // monitor has written it, and its record stops counting at the timer's end.
+        let session = store.session
+        let timer = store.timerLock.flatMap { timer -> TimerLock? in
+            if case .unlocked = session { return nil }
+            return timer
+        }
+        let overTimer = timer.flatMap { $0.isDue(now: now, early: 0) ? $0 : nil }
+        let statsNow = overTimer.map { min(now, $0.endsAt) } ?? now
         let lockedSoFar = running?.lockedTime(now: now)
         let state: State
-        switch store.session {
+        switch session {
         case .unlocked:
+            state = .unlocked
+        case _ where overTimer != nil:
             state = .unlocked
         case .locked(let since):
             // Without a record yet (a schedule just locked), the lock state's start is the best guess.
@@ -42,15 +56,16 @@ struct LockSnapshot: Equatable, Sendable {
                 state = .open(relockAt: relockAt, resumesFrom: relockAt - (lockedSoFar ?? 0))
             }
         }
-        let today = calendar.dateInterval(of: .day, for: now)
-            .map { Insights.lockedTime(in: $0, history: history, now: now) } ?? 0
+        let today = calendar.dateInterval(of: .day, for: statsNow)
+            .map { Insights.lockedTime(in: $0, history: history, now: statsNow) } ?? 0
         return LockSnapshot(
             state: state,
             modeName: store.activeModeName ?? "Focus",
             placeName: place,
             today: today,
-            weekTotal: Insights.lockedTime(in: Insights.week(of: now, calendar: calendar), history: history, now: now),
-            days: Insights.days(weekOf: now, history: history, now: now, calendar: calendar)
+            weekTotal: Insights.lockedTime(in: Insights.week(of: statsNow, calendar: calendar), history: history, now: statsNow),
+            days: Insights.days(weekOf: statsNow, history: history, now: statsNow, calendar: calendar),
+            timerEndsAt: overTimer == nil ? timer?.endsAt : nil
         )
     }
 
@@ -83,6 +98,10 @@ struct LockSnapshot: Equatable, Sendable {
         case .locked: dates = lockedDates(from: now)
         case .open(let relockAt, _): dates = [now] + lockedDates(from: relockAt)
         }
+        // A timer lock ends the window at its end, with an entry that reads unlocked, when that is sooner.
+        if let end = first.timerEndsAt, let last = dates.last, end <= last {
+            dates = dates.filter { $0 < end } + [end]
+        }
         if let last = dates.last, midnight > now, midnight <= last { dates.append(midnight) }
         dates = Array(Set(dates)).sorted()
         return SnapshotTimeline(
@@ -95,7 +114,7 @@ struct LockSnapshot: Equatable, Sendable {
 
     /// Made-up numbers for previews, the widget gallery and the widget placeholder only. Never shown
     /// as real data.
-    static func sample(_ state: State) -> LockSnapshot {
+    static func sample(_ state: State, timerEndsAt: Date? = nil) -> LockSnapshot {
         let bars: [TimeInterval] = [2700, 1800, 3720, 2280, 6000, 4200, 1200]
         let monday = Calendar.current.startOfDay(for: .now)
         return LockSnapshot(
@@ -107,7 +126,8 @@ struct LockSnapshot: Equatable, Sendable {
             days: bars.enumerated().map { index, time in
                 Insights.Day(start: monday + Double(index) * 86_400, letter: ["M", "T", "W", "T", "F", "S", "S"][index],
                              lockedTime: time, isToday: index == 4)
-            }
+            },
+            timerEndsAt: timerEndsAt
         )
     }
 
@@ -116,6 +136,15 @@ struct LockSnapshot: Equatable, Sendable {
 
     /// Sample lock lengths for previews and the gallery: 47:12, 1:47:12 and 10:47:12.
     static let sampleLockLengths: [TimeInterval] = [2832, 6432, 38_832]
+
+    /// Sample timer locks for previews and the gallery: (length, time left) of 45 min with 31 min left,
+    /// and 10 h with all of it left (the widest the countdown gets).
+    static let sampleTimers: [(length: TimeInterval, left: TimeInterval)] = [(2700, 1860), (36_000, 36_000)]
+
+    /// A sample timer lock of `length` with `left` to go, for previews and the gallery only.
+    static func sampleTimer(length: TimeInterval, left: TimeInterval) -> LockSnapshot {
+        sample(.locked(countingFrom: .now - (length - left)), timerEndsAt: .now + left)
+    }
 
     /// A sample lock that has run for `length`, for previews and the gallery only.
     static func sampleLocked(for length: TimeInterval) -> LockSnapshot {

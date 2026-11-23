@@ -3,8 +3,14 @@ import WidgetKit
 
 /// The widgets' faces, from design/screens/Widgets.dc.html. In `Surfaces/` so the app's DEBUG gallery
 /// can show them too. Timers tick on their own: the lock counts up with `Text(date, style: .timer)`,
-/// and a pass counts down from the entry's date to its relock time and stops at 0:00. Each face takes
+/// a timer lock counts down to its end with "left", and a pass counts down from the entry's date to its
+/// relock time and stops at 0:00. Each face takes
 /// the entry's date and draws `snapshot.state(at: date)`, so a pass whose time has come shows the lock.
+
+/// The time left on a timer lock, counting down to `end` and stopping at 0:00.
+private func timeLeft(_ end: Date) -> Text {
+    Text(timerInterval: LockActivityTiming.countdown(to: end), countsDown: true)
+}
 
 /// Small: the lock with its timer, a pass with its countdown, or today's phone-free time.
 struct SmallFace: View {
@@ -45,10 +51,13 @@ struct SmallFace: View {
     @ViewBuilder private var value: some View {
         switch snapshot.state(at: date) {
         case .locked(let from):
-            Text(from, style: .timer).font(.system(size: 34, weight: .light).monospacedDigit()).foregroundStyle(Color.ink)
-                .multilineTextAlignment(.leading)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
+            Group {
+                if let end = snapshot.timerEndsAt { timeLeft(end) } else { Text(from, style: .timer) }
+            }
+            .font(.system(size: 34, weight: .light).monospacedDigit()).foregroundStyle(Color.ink)
+            .multilineTextAlignment(.leading)
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
         case .open(let relockAt, _):
             Text(timerInterval: date...relockAt, countsDown: true)
                 .font(.system(size: 34, weight: .light).monospacedDigit()).foregroundStyle(Color.ink)
@@ -62,7 +71,7 @@ struct SmallFace: View {
 
     @ViewBuilder private var label: some View {
         switch snapshot.state(at: date) {
-        case .locked: Text("Locked").font(.tCaption).foregroundStyle(Color.emberInk)
+        case .locked: Text(snapshot.timerEndsAt == nil ? "Locked" : "left").font(.tCaption).foregroundStyle(Color.emberInk)
         case .open: Text("Open").font(.tCaption).foregroundStyle(Color.emberInk)
         case .unlocked: Text("today").font(.tCaption).foregroundStyle(Color.slateInk)
         }
@@ -79,15 +88,27 @@ struct MediumFace: View {
         HStack(spacing: 20) {
             orb
             VStack(alignment: .leading, spacing: Space.sm) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(TimeFormat.short(snapshot.weekTotal)).font(.numberDisplay).foregroundStyle(Color.ink)
-                        .minimumScaleFactor(0.6)
-                        .lineLimit(1)
-                    Text("phone-free this week").font(.tCaption).foregroundStyle(Color.inkSecondary)
-                }
+                headline
                 bars
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    /// The week's total, or the time left while a timer lock runs.
+    @ViewBuilder private var headline: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            if let end = snapshot.timerEndsAt, case .locked = snapshot.state(at: date) {
+                timeLeft(end).font(.system(size: 40, weight: .light).monospacedDigit()).foregroundStyle(Color.ink)
+                    .minimumScaleFactor(0.6)
+                    .lineLimit(1)
+                Text("left").font(.tCaption).foregroundStyle(Color.emberInk)
+            } else {
+                Text(TimeFormat.short(snapshot.weekTotal)).font(.numberDisplay).foregroundStyle(Color.ink)
+                    .minimumScaleFactor(0.6)
+                    .lineLimit(1)
+                Text("phone-free this week").font(.tCaption).foregroundStyle(Color.inkSecondary)
+            }
         }
     }
 
@@ -149,7 +170,7 @@ struct CircularFace: View {
                 Image(systemName: symbol).font(.system(size: 12, weight: .semibold)).widgetAccentable()
                 Group {
                     switch snapshot.state(at: date) {
-                    case .locked(let from): Text(from, style: .timer)
+                    case .locked(let from): if let end = snapshot.timerEndsAt { timeLeft(end) } else { Text(from, style: .timer) }
                     case .open(let relockAt, _): Text(timerInterval: date...relockAt, countsDown: true)
                     case .unlocked: Text(TimeFormat.short(snapshot.today))
                     }
@@ -178,7 +199,8 @@ struct RectangularFace: View {
             Label(title, systemImage: symbol).font(.headline).widgetAccentable()
             Group {
                 switch snapshot.state(at: date) {
-                case .locked(let from): Text(from, style: .timer)
+                case .locked(let from):
+                    if let end = snapshot.timerEndsAt { Text("\(timeLeft(end)) left") } else { Text(from, style: .timer) }
                 case .open(let relockAt, _): Text("Relocks in \(Text(timerInterval: date...relockAt, countsDown: true))")
                 case .unlocked: Text("\(TimeFormat.short(snapshot.today)) today")
                 }
@@ -214,6 +236,8 @@ private let previewLockedLong = LockSnapshot.sampleLocked(for: LockSnapshot.samp
 private let previewLockedVeryLong = LockSnapshot.sampleLocked(for: LockSnapshot.sampleLockLengths[2])
 private let previewOpen = LockSnapshot.sample(.open(relockAt: .now + 272, resumesFrom: .now - 2832))
 private let previewUnlocked = LockSnapshot.sample(.unlocked)
+private let previewTimer = LockSnapshot.sampleTimer(length: LockSnapshot.sampleTimers[0].length, left: LockSnapshot.sampleTimers[0].left)
+private let previewLongTimer = LockSnapshot.sampleTimer(length: LockSnapshot.sampleTimers[1].length, left: LockSnapshot.sampleTimers[1].left)
 
 private struct FacePreview<Face: View>: View {
     let width: CGFloat
@@ -238,6 +262,10 @@ private struct FacePreview<Face: View>: View {
 #Preview("Small · open · light") { FacePreview(width: 170, height: 170, scheme: .light) { SmallFace(snapshot: previewOpen) } }
 #Preview("Small · unlocked · dark") { FacePreview(width: 170, height: 170, scheme: .dark) { SmallFace(snapshot: previewUnlocked) } }
 #Preview("Small · unlocked · light") { FacePreview(width: 170, height: 170, scheme: .light) { SmallFace(snapshot: previewUnlocked) } }
+#Preview("Small · timer · dark") { FacePreview(width: 170, height: 170, scheme: .dark) { SmallFace(snapshot: previewTimer) } }
+#Preview("Small · 10 h timer · light") { FacePreview(width: 170, height: 170, scheme: .light) { SmallFace(snapshot: previewLongTimer) } }
+#Preview("Medium · timer · dark") { FacePreview(width: 364, height: 170, scheme: .dark) { MediumFace(snapshot: previewTimer) } }
+#Preview("Rectangular · timer · dark") { FacePreview(width: 172, height: 76, scheme: .dark) { RectangularFace(snapshot: previewLongTimer) } }
 #Preview("Medium · dark") { FacePreview(width: 364, height: 170, scheme: .dark) { MediumFace(snapshot: previewLocked) } }
 #Preview("Medium · light") { FacePreview(width: 364, height: 170, scheme: .light) { MediumFace(snapshot: previewLocked) } }
 #Preview("Circular · dark") { FacePreview(width: 76, height: 76, scheme: .dark) { CircularFace(snapshot: previewLocked) } }

@@ -70,6 +70,7 @@ struct ScheduleActivityTests {
         let short = Mode(name: "Short", schedule: ModeSchedule(days: [2], start: 600, end: 610))
         let many = (0..<25).map { Mode(name: "M\($0)", schedule: afternoons) }
         let plan = ModeActivity.plan(for: [manual, short] + many)
+        #expect(ModeActivity.limit == 18)
         #expect(plan.count == ModeActivity.limit)
         #expect(plan.first?.name == ModeActivity.name(for: many[0].id))
         #expect(plan.first?.schedule == afternoons)

@@ -71,6 +71,49 @@ enum DemoData {
 }
 
 #if DEBUG
+extension DemoData {
+    /// A running 45-minute timer lock with `left` seconds to go, written like `LockEngine.lockTimed` writes it.
+    static func seedTimer(_ store: SharedStore, left: TimeInterval, now: Date = .now) {
+        let duration: TimeInterval = 45 * 60
+        let start = now - (duration - left)
+        store.finishedTimer = nil
+        store.timerLock = TimerLock(start: start, duration: duration)
+        store.session = .locked(since: start)
+    }
+
+    /// A 45-minute timer that ended a minute ago while Tapout was closed, as the monitor leaves it:
+    /// unlocked, the timer in `finishedTimer`, and its record still open with an intention.
+    /// `handedOver`: it ended inside a scheduled window, so the session stays locked under that mode
+    /// ("Evenings" when the demo data has it, else the active mode) and no unlock time is written.
+    static func seedFinishedTimer(_ store: SharedStore, handedOver: Bool = false, now: Date = .now) {
+        let duration: TimeInterval = 45 * 60
+        let start = now - duration - 60
+        let end = start + duration
+        let timerMode = store.activeModeID ?? UUID()
+        store.timerLock = nil
+        if handedOver {
+            let mode = store.modes.first { $0.name == "Evenings" }
+                ?? store.modes.first { $0.id == store.activeModeID } ?? store.modes.first
+            if let mode {
+                store.activeModeID = mode.id
+                store.activeModeName = mode.name
+            }
+            store.session = .locked(since: end)
+            store.finishedTimerHandover = mode?.name ?? "Focus"
+        } else {
+            store.session = .unlocked
+            store.lastUnlockAt = end
+            store.finishedTimerHandover = nil
+        }
+        store.finishedTimer = TimerLock(start: start, duration: duration)
+        var history = store.lockHistory.filter { $0.end != nil }
+        history.append(LockRecord(start: start, end: nil, placeUID: nil, modeID: timerMode,
+                                  intention: "Essay outline"))
+        store.lockHistory = history
+        store.currentIntention = "Essay outline"
+    }
+}
+
 extension AppModel {
     /// Launch arguments for screenshots and testing:
     /// `-demoData` replaces the App Group's modes, places, history and passes with `DemoData` and skips onboarding;

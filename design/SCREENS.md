@@ -26,7 +26,7 @@ Every screen from the "Tapout App Screens" canvas, mapped to its source file in 
 
 | # | Screen | File | Variants (prop values) | Notes |
 | --- | --- | --- | --- | --- |
-| 1 | Onboarding: welcome, Screen Time, pick apps, pair tag + interests | `Main.dc.html` | `step` 1–4 × `theme` | Interest chips are multi-select. Step 3 app tiles stand in for `FamilyActivityPicker`. |
+| 1 | Onboarding: welcome, Screen Time, pick apps, pair tag + interests | `Main.dc.html` | `step` 1–4 × `theme` | Interest chips are multi-select. Step 3 app tiles stand in for `FamilyActivityPicker`. **The app now has six steps** (Phase 7): interests are their own step before pairing, and the pair sheet's name field says "Name this Tag". |
 | 2 | Home | `Home.dc.html` | `state` unlocked / locked / emergency × `theme` | Locked timer counts **up**. Emergency counts **down** to relock, and the orb ring shows the time left. |
 | 3 | Lock moment storyboard | `LockFrame.dc.html` | `frame` 1–4 × `theme` | Timing: 0 ms tag read + first rigid tap; 90 ms second tap and ring sweep (spring 0.6 s, damping 0.72); ~450 ms seal + one shockwave ripple; 600 ms settled, timer at 0:00. Reduce Motion: frame 1 → 4 as a 250 ms crossfade, haptics unchanged. |
 | 4 | Unknown tag rejected | `Rejected.dc.html` | `theme` | Copy: "That's not one of your tags." Warning haptic. |
@@ -52,3 +52,4 @@ The screens came later and are the newer decision. **When they conflict, follow 
 - **Emergency exit:** the README puts it in settings. The locked Home screen shows a quiet "Emergency pass · [3] left" link. The owner may remove this link; ask before shipping it.
 - **Fonts:** the README says SF Pro and SF Pro Rounded, and the screen files name Inter/Nunito. The app follows `Tapout/DesignSystem/Typography.swift`: Fraunces for titles and numbers of 20pt and up, SF Pro for the rest.
 - **Mascots:** the README says no mascots. Buddy concepts are a deliberate, still-undecided exception.
+- **Phase 7 (the owner's device feedback) supersedes two screens:** onboarding has six steps, with interests on their own screen before pairing (`Main.dc.html` still shows them on the pair step), and the pair sheet's name field is labelled "Name this Tag" (`Places.dc.html` says "Name this place"). Follow the app, not those two files.

@@ -120,6 +120,31 @@ struct SharedStoreTests {
         #expect(old.intentionDone == nil)
     }
 
+    @Test func timerKeysAreNilWhenAbsentAndRoundTrip() {
+        let store = SharedStore.makeTest()
+        #expect(store.timerLock == nil)
+        #expect(store.finishedTimer == nil)
+        let running = TimerLock(start: Self.start, duration: 1800)
+        let ended = TimerLock(start: Self.start - 3600, duration: 900)
+        store.timerLock = running
+        store.finishedTimer = ended
+        #expect(store.timerLock == running)
+        #expect(store.finishedTimer == ended)
+        store.timerLock = nil
+        store.finishedTimer = nil
+        #expect(store.timerLock == nil)
+        #expect(store.finishedTimer == nil)
+    }
+
+    @Test func corruptTimerKeysReadAsNil() {
+        let suite = "tapout.tests.\(UUID().uuidString)"
+        let store = SharedStore.makeTest(suite: suite)
+        UserDefaults(suiteName: suite)!.set(Data("not json".utf8), forKey: "timerLock")
+        UserDefaults(suiteName: suite)!.set(Data("not json".utf8), forKey: "finishedTimer")
+        #expect(store.timerLock == nil)
+        #expect(store.finishedTimer == nil)
+    }
+
     @Test func unreadableDataIsKeptBeforeFallingBack() {
         let suite = "tapout.tests.\(UUID().uuidString)"
         let store = SharedStore.makeTest(suite: suite)

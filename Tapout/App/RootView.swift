@@ -12,19 +12,17 @@ enum Cover: Identifiable {
     case rejected(RejectedTag)
     case emergencyPass
     case milestone(Milestone)
+    /// A timer lock ended; carries its length, and the mode whose scheduled lock took over, if any.
+    case timerDone(TimeInterval, handedOverTo: String?)
 
     var id: String {
         switch self {
         case .rejected: "rejected"
         case .emergencyPass: "emergencyPass"
         case .milestone(let milestone): "milestone-\(milestone.rawValue)"
+        case .timerDone: "timerDone"
         }
     }
-}
-
-/// What to do once a cover has gone, so a scan or sheet never starts while it is still leaving.
-private enum AfterCover {
-    case scan, pair, milestone
 }
 
 /// Tabs, the floating tab bar, navigation, tag scans, the lock-moment overlay and the clock that drives auto-relock.
@@ -39,10 +37,21 @@ struct RootView: View {
     @State private var intentionCheck: IntentionCheck?
     @State private var cover: Cover?
     @State private var afterCover: AfterCover?
+    /// The owner's choice from a cover that closed while a Time's up was waiting; it runs after the Time's up.
+    @State private var deferredAfterCover: AfterCover?
     @State private var pairing = false
+    @State private var showingTimer = false
+    /// Start succeeded in the timer sheet; the lock moment plays once the sheet has gone.
+    @State private var timerStarted = false
+    /// A finished timer's Time's up cover, waiting for other covers and sheets to go.
+    @State private var pendingTimerDone: (duration: TimeInterval, handedOverTo: String?)?
+    /// The finished timer's "Did you do it?", shown after its Time's up cover.
+    @State private var pendingTimerCheck: IntentionCheck?
     @State private var scanning = false
     @State private var keyboardUp = false
     @State private var screenTimeNeeded = false
+    @State private var screenTimeGrace = ScreenTimeGrace()
+    @State private var screenTimeRecheck: Task<Void, Never>?
     @AppStorage(AppSettings.appearanceKey) private var appearance = Appearance.system
     @AppStorage(AppSettings.onboardedKey) private var hasOnboarded = false
     @AppStorage(AppSettings.liveActivityKey) private var liveActivity = true
@@ -108,18 +117,36 @@ struct RootView: View {
             case .milestone(let milestone):
                 MilestoneView(milestone: milestone,
                               subtitle: milestone.subtitle(totalLocked: model.totalLocked, interests: model.interests))
+            case .timerDone(let duration, let handedOverTo):
+                TimerDoneView(duration: duration, handedOverTo: handedOverTo) {}
             }
         }
         .sheet(item: $intentionCheck, onDismiss: {
             checkScreenTime()
-            if !scanning { showMilestone() }
+            guard !showTimerDone() else { return }
+            if !runDeferredAfterCover(), !scanning { showMilestone() }
         }) { check in
             IntentionCheckSheet(check: check) { done in
                 model.answerIntention(forLockStartedAt: check.id, done: done)
             }
         }
-        .sheet(isPresented: $pairing, onDismiss: checkScreenTime) {
+        .sheet(isPresented: $pairing, onDismiss: {
+            checkScreenTime()
+            showTimerDone()
+        }) {
             PairPlaceSheet(model: model)
+        }
+        .sheet(isPresented: $showingTimer, onDismiss: {
+            if timerStarted {
+                timerStarted = false
+                lockPlaceName = "Timer"
+                showingLockMoment = true // the lock moment plays the lock haptic
+            }
+            checkScreenTime()
+            showTimerDone()
+        }) {
+            TimerSheet(modeName: model.activeMode.name, hasApps: model.activeModeHasApps, hasTags: !model.places.isEmpty,
+                       intention: $intentionDraft, recent: model.recentIntentions, onStart: startTimer)
         }
         // Below the id, so turning on Bold Text in Settings can't reset the draft. On its own host,
         // because two full-screen covers on one view can conflict.
@@ -131,20 +158,32 @@ struct RootView: View {
         // Its own host too, for the same reason. It needs onboarding done, so the two never overlap.
         .background {
             Color.clear.fullScreenCover(isPresented: $screenTimeNeeded) {
-                ScreenTimeAgainView { screenTimeNeeded = false }
+                ScreenTimeAgainView {
+                    screenTimeGrace = ScreenTimeGrace()
+                    screenTimeRecheck?.cancel()
+                    screenTimeRecheck = nil
+                    screenTimeNeeded = false
+                }
             }
         }
         .onChange(of: screenTimeNeeded) { wasNeeded, needed in
             // The page closed: access came back, by its own button or by the check.
             if wasNeeded && !needed {
                 engine.syncShields()
+                closeFinishedTimer(heard: false)
                 model.syncSchedules()
+                showTimerDone()
             }
         }
         // A lock the monitor started (a schedule) gets its record here; for the app's own lock,
         // unlock, pass and relock the record is already right, so this changes nothing.
+        // A timer the monitor ended while Tapout is open (its callback may come before the app's tick) is
+        // caught here and gets the same Time's up as one the app ended; each timer is closed only once.
         .onChange(of: engine.session) { _, session in
-            model.reconcile(with: session)
+            if let finish = model.sessionChanged(to: session) {
+                engine.acknowledgeTimerFinish()
+                present(finish, heard: scenePhase == .active)
+            }
             refreshSurfaces()
         }
         .onChange(of: liveActivity) { _, _ in refreshSurfaces() }
@@ -155,6 +194,8 @@ struct RootView: View {
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 engine.syncShields()
+                // A timer that ended while Tapout was in the background or closed (the monitor finished it).
+                closeFinishedTimer(heard: false)
                 model.reconcile(with: engine.session)
                 model.syncSchedules()
                 checkScreenTime()
@@ -176,6 +217,8 @@ struct RootView: View {
         .task {
             // The lock state is the truth: it survives quitting, and the monitor can relock while Tapout is closed.
             engine.syncShields()
+            // A timer that ended while Tapout was closed (the monitor finished it, or syncShields just did).
+            closeFinishedTimer(heard: false)
             model.reconcile(with: engine.session)
             model.syncSchedules()
             checkScreenTime()
@@ -202,6 +245,7 @@ struct RootView: View {
                 model: model,
                 intentionDraft: $intentionDraft,
                 onScan: { Task { await scan() } },
+                onTimer: { if !scanning, engine.session == .unlocked { showingTimer = true } },
                 onEmergencyPass: { if !scanning { cover = .emergencyPass } },
                 onOpenSettings: openSettings
             )
@@ -221,10 +265,24 @@ struct RootView: View {
         let approved = status == .approved
         model.noteScreenTimeAccess(status)
         let needed = hasOnboarded && !approved
-        // Approved clears the flag even under a cover or sheet; only showing the page waits.
-        guard needed else { screenTimeNeeded = false; return }
-        guard cover == nil, intentionCheck == nil, !pairing, !scanning else { return }
-        screenTimeNeeded = true
+        switch screenTimeGrace.observe(needed: needed, now: .now) {
+        case .clear:
+            // Approved clears the flag even under a cover or sheet; only showing the page waits.
+            screenTimeRecheck?.cancel()
+            screenTimeRecheck = nil
+            screenTimeNeeded = false
+        case .wait(let due):
+            screenTimeRecheck?.cancel()
+            screenTimeRecheck = Task {
+                try? await Task.sleep(for: .seconds(max(0, due.timeIntervalSinceNow) + 0.05))
+                guard !Task.isCancelled else { return }
+                checkScreenTime()
+            }
+        case .show:
+            // Waits while another cover or sheet is up, so two presentations never fight; their dismissals check again.
+            guard cover == nil, intentionCheck == nil, !pairing, !showingTimer, !scanning else { return }
+            screenTimeNeeded = true
+        }
     }
 
     /// A quick double tap on the gear would otherwise push Settings twice.
@@ -243,7 +301,11 @@ struct RootView: View {
     private func scan() async {
         guard !scanning else { return }
         scanning = true
-        defer { scanning = false }
+        defer {
+            scanning = false
+            checkScreenTime()
+            showTimerDone() // a timer that ended during the read
+        }
         Haptics.prepare()
         let unlocking = engine.session.lockState == .locked
         // The simulator stand-in finds a place that works, unless launched with -mockUnknownTag.
@@ -302,12 +364,92 @@ struct RootView: View {
         afterCover = nil
         checkScreenTime()
         guard !screenTimeNeeded else { return }
+        // A timer that ended under another cover takes its turn first; the owner's choice waits for it.
+        let waiting = AfterCover.deferring(action, over: deferredAfterCover)
+        if showTimerDone() {
+            deferredAfterCover = waiting
+            return
+        }
         switch action {
         case .scan: Task { await scan() }
         case .pair: pairing = true
         case .milestone: showMilestone()
+        case .timerCheck:
+            if let check = pendingTimerCheck {
+                // Its dismissal runs a waiting choice.
+                pendingTimerCheck = nil
+                intentionCheck = check
+            } else if !runDeferredAfterCover() {
+                showMilestone()
+            }
         case nil: break
         }
+    }
+
+    /// Runs the choice that waited for a Time's up. Returns true when there was one.
+    private func runDeferredAfterCover() -> Bool {
+        guard let action = deferredAfterCover else { return false }
+        deferredAfterCover = nil
+        switch action {
+        case .scan: Task { await scan() }
+        case .pair: pairing = true
+        case .milestone, .timerCheck: return false
+        }
+        return true
+    }
+
+    /// Starts a timer lock from the sheet. The end is scheduled first; if that fails nothing locks and the
+    /// sheet says so.
+    private func startTimer(_ duration: TimeInterval) -> Bool {
+        // A second Start while the first one is being handled: the first already locked.
+        if timerStarted { return true }
+        guard !scanning, engine.session == .unlocked, model.activeModeHasApps else { return false }
+        // A timer that finished but isn't closed yet gets its record ended at its own end first, so the new
+        // lock can't drop it. Its Time's up is skipped: the owner is already starting the next one.
+        model.closeFinishedTimer()
+        engine.acknowledgeTimerFinish()
+        do {
+            _ = try engine.lockTimed(duration: duration)
+        } catch {
+            return false
+        }
+        model.startLock(placeUID: nil, intention: intentionDraft)
+        intentionDraft = ""
+        timerStarted = true
+        // The notice at the end needs permission. Its own task, so the lock doesn't wait for the answer.
+        if !Self.isDemo { Task { await NoticePermission.request() } }
+        return true
+    }
+
+    /// Closes a finished timer's record (at the timer's end time) and queues its Time's up cover and
+    /// "Did you do it?". `closeFinishedTimer()` returns nil once done, so each timer is shown once.
+    /// `heard` plays the unlock haptic, for a timer that ended while Tapout was open.
+    private func closeFinishedTimer(heard: Bool) {
+        engine.acknowledgeTimerFinish()
+        guard let finish = model.closeFinishedTimer() else { return }
+        present(finish, heard: heard)
+    }
+
+    /// Queues a closed timer's Time's up cover and "Did you do it?", with the unlock haptic when `heard`.
+    /// A timer that handed over to a schedule opened nothing, so it gets no unlock haptic.
+    private func present(_ finish: AppModel.TimerFinish, heard: Bool) {
+        if finish.playsUnlockHaptic(heard: heard) { Haptics.unlock() }
+        if let record = finish.record, let intention = record.intention {
+            pendingTimerCheck = IntentionCheck(id: record.start, intention: intention)
+        }
+        pendingTimerDone = (finish.timer.duration, finish.handedOverTo)
+        showTimerDone()
+    }
+
+    /// Shows a waiting Time's up cover when nothing else is up. Returns true when it did.
+    @discardableResult
+    private func showTimerDone() -> Bool {
+        guard let done = pendingTimerDone, cover == nil, intentionCheck == nil, !pairing, !showingTimer,
+              !scanning, !screenTimeNeeded else { return false }
+        pendingTimerDone = nil
+        afterCover = .timerCheck
+        cover = .timerDone(done.duration, handedOverTo: done.handedOverTo)
+        return true
     }
 
     /// `-demoData` screenshots shouldn't stop for the notification prompt.
@@ -324,6 +466,8 @@ struct RootView: View {
             try? await Task.sleep(for: .seconds(1))
             let relocked = withAnimation(reduceMotion ? Motion.lockReduced : Motion.lock) { engine.tick() }
             if relocked { Haptics.lock() }
+            // The timer ran out while Tapout was open.
+            if engine.timerJustFinished != nil { closeFinishedTimer(heard: true) }
         }
     }
 }

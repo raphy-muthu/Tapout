@@ -2,9 +2,9 @@ import ManagedSettings
 import ManagedSettingsUI
 import UIKit
 
-/// The block screen from design/screens/Block.dc.html: a sealed ember orb, "Sealed" and
-/// "Tap a tag to open this app.", dark only. iOS shows a button whatever the design says, so it is a
-/// quiet Close. The system font is the only one a shield can use.
+/// The block screen from design/screens/Block.dc.html: the app's own sealed ember orb (pre-rendered,
+/// see ShieldOrbArt), "Sealed" and "Tap a tag to open this app.", dark only. iOS shows a button whatever
+/// the design says, so it is an ember Close. The system font is the only one a shield can use.
 final class ShieldConfigurationExtension: ShieldConfigurationDataSource {
     override func configuration(shielding application: Application) -> ShieldConfiguration {
         SealedShield.configuration
@@ -28,17 +28,22 @@ enum SealedShield {
         ShieldConfiguration(
             backgroundBlurStyle: nil,
             backgroundColor: color("bg"),
-            icon: orb,
+            icon: icon,
             title: ShieldConfiguration.Label(text: "Sealed", color: color("ink")),
             subtitle: ShieldConfiguration.Label(text: "Tap a tag to open this app.", color: color("ink-secondary")),
-            primaryButtonLabel: ShieldConfiguration.Label(text: "Close", color: color("ink")),
-            primaryButtonBackgroundColor: color("surface-2"),
+            primaryButtonLabel: ShieldConfiguration.Label(text: "Close", color: color("on-ember")),
+            primaryButtonBackgroundColor: color("ember"),
             secondaryButtonLabel: nil
         )
     }
 
-    /// The spec's 120pt orb: an ember ring, a faint halo, the solid orb and its highlight.
-    private static var orb: UIImage {
+    /// The app's glass orb, pre-rendered (see ShieldOrbArt). The drawn fallback only shows if the asset is missing.
+    private static var icon: UIImage {
+        UIImage(named: "SealedOrb", in: .main, compatibleWith: dark)?.withRenderingMode(.alwaysOriginal) ?? fallbackOrb
+    }
+
+    /// A flat ember orb: a ring, a faint halo, the solid orb and its highlight.
+    private static var fallbackOrb: UIImage {
         UIGraphicsImageRenderer(size: CGSize(width: 120, height: 120)).image { context in
             let cg = context.cgContext
             let ember = color("ember")

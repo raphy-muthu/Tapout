@@ -16,6 +16,8 @@ struct SurfaceGallery: View {
                 row("Locked", .sample(.locked(countingFrom: .now - 2832)))
                 row("Locked · 1h 47m", .sampleLocked(for: LockSnapshot.sampleLockLengths[1]))
                 row("Locked · 10h 47m", .sampleLocked(for: LockSnapshot.sampleLockLengths[2]))
+                row("Timer · 45 min, 31 min left", timerSample(0))
+                row("Timer · 10 h", timerSample(1))
                 row("Open", .sample(.open(relockAt: .now + 272, resumesFrom: .now - 2832)))
                 row("Unlocked", .sample(.unlocked))
                 tintedSection
@@ -25,6 +27,11 @@ struct SurfaceGallery: View {
         }
         .background(Color.bg)
         .navigationTitle("Widgets")
+    }
+
+    private func timerSample(_ index: Int) -> LockSnapshot {
+        let timer = LockSnapshot.sampleTimers[index]
+        return .sampleTimer(length: timer.length, left: timer.left)
     }
 
     private func row(_ title: String, _ snapshot: LockSnapshot, date: Date = .now) -> some View {
@@ -46,6 +53,7 @@ struct SurfaceGallery: View {
         let small: [(String, LockSnapshot)] = [
             ("Locked", .sample(.locked(countingFrom: .now - 2832))),
             ("Open", .sample(.open(relockAt: .now + 272, resumesFrom: .now - 2832))),
+            ("Timer", timerSample(0)),
             ("Unlocked", .sample(.unlocked)),
         ]
         return VStack(alignment: .leading, spacing: Space.xs) {
@@ -65,35 +73,39 @@ struct SurfaceGallery: View {
     }
 
     private var liveActivityRow: some View {
-        let states: [(String, LockActivityAttributes.ContentState)] = [
-            ("47m", .sample()),
-            ("1h 47m", .sample(lockedFor: LockSnapshot.sampleLockLengths[1])),
-            ("10h 47m", .sample(lockedFor: LockSnapshot.sampleLockLengths[2])),
-            ("Open", .sample(open: true)),
+        // The last one is stale: a timer that ended with Tapout closed.
+        let states: [(String, LockActivityAttributes.ContentState, Bool)] = [
+            ("47m", .sample(), false),
+            ("1h 47m", .sample(lockedFor: LockSnapshot.sampleLockLengths[1]), false),
+            ("10h 47m", .sample(lockedFor: LockSnapshot.sampleLockLengths[2]), false),
+            ("Open", .sample(open: true), false),
+            ("Timer 31m left", .sampleTimer(length: LockSnapshot.sampleTimers[0].length, left: LockSnapshot.sampleTimers[0].left), false),
+            ("Timer 10 h", .sampleTimer(length: LockSnapshot.sampleTimers[1].length, left: LockSnapshot.sampleTimers[1].left), false),
+            ("Time's up", .sampleTimerDone(), true),
         ]
         return VStack(alignment: .leading, spacing: Space.xs) {
             Text("Live Activity").font(.tHeadline)
-            ForEach(states, id: \.0) { _, state in
-                LockScreenCard(state: state, isStale: false)
+            ForEach(states, id: \.0) { _, state, stale in
+                LockScreenCard(state: state, isStale: stale)
                     .frame(width: 364)
                     .background(Color.surface1, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
             }
-            ForEach(states, id: \.0) { _, state in
+            ForEach(states, id: \.0) { _, state, stale in
                 HStack(spacing: Space.xs) {
-                    IslandOrb(state: state, isStale: false, size: 26)
+                    IslandOrb(state: state, isStale: stale, size: 26)
                     Spacer(minLength: 0)
-                    IslandTimer(state: state, isStale: false, compact: true)
+                    IslandTimer(state: state, isStale: stale, compact: true)
                 }
                 .padding(.horizontal, 10)
                 .frame(width: 250, height: 37)
                 .background(Color.black, in: Capsule())
             }
-            ForEach(states, id: \.0) { _, state in
+            ForEach(states, id: \.0) { _, state, stale in
                 HStack(spacing: Space.sm) {
-                    IslandOrb(state: state, isStale: false, size: 64)
-                    IslandTitle(state: state, isStale: false)
+                    IslandOrb(state: state, isStale: stale, size: 64)
+                    IslandTitle(state: state, isStale: stale)
                     Spacer(minLength: 0)
-                    IslandTimer(state: state, isStale: false)
+                    IslandTimer(state: state, isStale: stale)
                 }
                 .padding(Space.md)
                 .frame(width: 364)

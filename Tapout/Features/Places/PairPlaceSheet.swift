@@ -104,7 +104,7 @@ struct PairPlaceSheet: View {
 
     private var nameField: some View {
         VStack(alignment: .leading, spacing: Space.xs) {
-            SectionLabel(text: "Name this place")
+            SectionLabel(text: "Name this Tag")
             TextField("Name", text: $name)
                 .textInputAutocapitalization(.words)
                 .font(.tTitle)

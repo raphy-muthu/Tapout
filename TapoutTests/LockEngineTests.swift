@@ -358,3 +358,214 @@ struct LockEngineTests {
         #expect(!engine.lock())
     }
 }
+
+/// Timer locks: started without a tag, ended by the clock.
+@MainActor
+struct LockEngineTimerTests {
+    private final class Clock {
+        var now = Date(timeIntervalSinceReferenceDate: 800_000_000)
+    }
+
+    private let clock = Clock()
+    private let store = SharedStore.makeTest()
+    private let shields = FakeShields()
+    private let relock = FakeRelock()
+    private let timers = FakeRelock()
+
+    private func makeEngine() -> LockEngine {
+        LockEngine(store: store, shields: shields, relock: relock, passes: MemoryPassVault(),
+                   timers: timers, now: { [clock] in clock.now })
+    }
+
+    @Test func lockTimedLocksStoresTheTimerAndSchedulesItsEnd() throws {
+        store.relockStrategy = .pastStart
+        let engine = makeEngine()
+        let timer = try engine.lockTimed(duration: 45 * 60)
+        #expect(timer == TimerLock(start: clock.now, duration: 45 * 60))
+        #expect(store.timerLock == timer)
+        #expect(store.session == .locked(since: clock.now))
+        #expect(engine.session == .locked(since: clock.now))
+        #expect(shields.applied == 1)
+        #expect(timers.scheduled == [FakeRelock.Call(relockAt: timer.endsAt, now: clock.now, strategy: .pastStart)])
+        #expect(relock.scheduled.isEmpty)
+        #expect(engine.log.last?.message == "Timer lock, 45 min")
+    }
+
+    @Test func lockTimedClampsTheDuration() throws {
+        let engine = makeEngine()
+        #expect(try engine.lockTimed(duration: 60).duration == TimerLock.minimum)
+    }
+
+    @Test func lockTimedKeepsAPendingFinishedMarker() throws {
+        // The earlier timer's record is closed at its own end by the app, not dropped.
+        let earlier = TimerLock(start: clock.now - 7200, duration: 3600)
+        store.finishedTimer = earlier
+        _ = try makeEngine().lockTimed(duration: 30 * 60)
+        #expect(store.finishedTimer == earlier)
+    }
+
+    @Test func lockTimedRefusesWhileLockedAndWritesNothing() {
+        let engine = makeEngine()
+        engine.lock()
+        #expect(throws: LockEngine.TimerError.alreadyLocked) { try engine.lockTimed(duration: 30 * 60) }
+        #expect(store.timerLock == nil)
+        #expect(timers.scheduled.isEmpty)
+        #expect(shields.applied == 1)
+    }
+
+    @Test func aSchedulingFailureLeavesTheEngineUnlockedWithNoTimer() {
+        timers.failure = FakeError()
+        let engine = makeEngine()
+        #expect(throws: LockEngine.TimerError.couldNotSchedule(String(describing: FakeError()))) {
+            try engine.lockTimed(duration: 30 * 60)
+        }
+        #expect(store.session == .unlocked)
+        #expect(store.timerLock == nil)
+        #expect(shields.applied == 0)
+    }
+
+    @Test func unlockClearsTheTimerAndCancelsItsSchedule() throws {
+        let engine = makeEngine()
+        _ = try engine.lockTimed(duration: 30 * 60)
+        engine.unlock()
+        #expect(store.timerLock == nil)
+        #expect(timers.cancelled == 1)
+        #expect(store.session == .unlocked)
+    }
+
+    @Test func tickWaitsForTheExactEnd() throws {
+        let engine = makeEngine()
+        let timer = try engine.lockTimed(duration: 30 * 60)
+        clock.now = timer.endsAt - 1
+        #expect(!engine.tick())
+        #expect(store.session == .locked(since: timer.start))
+        #expect(store.timerLock == timer)
+        #expect(engine.timerJustFinished == nil)
+        #expect(shields.cleared == 0)
+    }
+
+    @Test func tickAtTheEndFinishesTheTimer() throws {
+        let engine = makeEngine()
+        let timer = try engine.lockTimed(duration: 30 * 60)
+        clock.now = timer.endsAt
+        #expect(!engine.tick())
+        #expect(store.session == .unlocked)
+        #expect(engine.session == .unlocked)
+        #expect(shields.cleared == 1)
+        #expect(store.timerLock == nil)
+        #expect(store.finishedTimer == timer)
+        #expect(store.lastUnlockAt == timer.endsAt)
+        #expect(engine.timerJustFinished?.timer == timer)
+        #expect(timers.cancelled == 1)
+        #expect(engine.log.contains { $0.message == "Timer finished" })
+        engine.acknowledgeTimerFinish()
+        #expect(engine.timerJustFinished == nil)
+        #expect(store.finishedTimer == timer)
+    }
+
+    @Test func aTimerEndingDuringAPassLeavesAppsOpen() throws {
+        let engine = makeEngine()
+        let timer = try engine.lockTimed(duration: 30 * 60)
+        clock.now = timer.endsAt - 120
+        try engine.useEmergencyPass()
+        let applied = shields.applied
+        clock.now = timer.endsAt
+        #expect(!engine.tick())
+        #expect(store.session == .unlocked)
+        #expect(shields.applied == applied)
+        #expect(relock.cancelled == 1)
+        #expect(engine.timerJustFinished?.timer == timer)
+        // The pass's relock time passes later: nothing locks again.
+        clock.now = timer.endsAt + 600
+        #expect(!engine.tick())
+        #expect(store.session == .unlocked)
+        #expect(shields.applied == applied)
+    }
+
+    @Test func syncShieldsAfterARestartPastTheEndFinishesInsteadOfShielding() throws {
+        let timer = try makeEngine().lockTimed(duration: 30 * 60)
+        let applied = shields.applied
+        clock.now = timer.endsAt + 3600
+        let engine = makeEngine()
+        engine.syncShields()
+        #expect(shields.applied == applied)
+        #expect(store.session == .unlocked)
+        #expect(store.finishedTimer == timer)
+        #expect(engine.timerJustFinished?.timer == timer)
+    }
+
+    @Test func aStaleTimerWhileUnlockedIsClearedByBothSyncAndTick() {
+        let stale = TimerLock(start: clock.now - 3600, duration: 1800)
+        store.timerLock = stale
+        store.finishedTimer = stale
+        let engine = makeEngine()
+        engine.syncShields()
+        #expect(store.timerLock == nil)
+        #expect(store.finishedTimer == stale)
+        #expect(engine.timerJustFinished == nil)
+        store.timerLock = stale
+        engine.tick()
+        #expect(store.timerLock == nil)
+        #expect(store.finishedTimer == stale)
+    }
+
+    @Test func aStaleDueTimerWithNoMarkerMovesToFinished() {
+        // A crash inside the finish step after the session was unlocked: the timer's record must still close.
+        let stale = TimerLock(start: clock.now - 3600, duration: 1800)
+        store.timerLock = stale
+        let engine = makeEngine()
+        engine.syncShields()
+        #expect(store.timerLock == nil)
+        #expect(store.finishedTimer == stale)
+    }
+
+    @Test func aStaleTimerThatIsNotDueIsDropped() {
+        let stale = TimerLock(start: clock.now - 600, duration: 1800)
+        store.timerLock = stale
+        makeEngine().tick()
+        #expect(store.timerLock == nil)
+        #expect(store.finishedTimer == nil)
+    }
+
+    @Test func aStaleTimerTheAppAlreadyClosedIsDropped() {
+        let stale = TimerLock(start: clock.now - 3600, duration: 1800)
+        store.timerLock = stale
+        store.lastClosedTimerStart = stale.start
+        makeEngine().tick()
+        #expect(store.timerLock == nil)
+        #expect(store.finishedTimer == nil)
+    }
+
+    @Test func aTagLockClearsAStaleTimerSoItIsNeverEndedAsTheTimer() {
+        let stale = TimerLock(start: clock.now - 600, duration: 1800)
+        store.timerLock = stale
+        let engine = makeEngine()
+        let lockedAt = clock.now
+        #expect(engine.lock())
+        #expect(store.timerLock == nil)
+        clock.now = stale.endsAt + 60
+        engine.tick()
+        #expect(store.session == .locked(since: lockedAt))
+        #expect(store.finishedTimer == nil)
+    }
+
+    @Test func unlockMarksTheTimerAsClosed() throws {
+        let engine = makeEngine()
+        let timer = try engine.lockTimed(duration: 30 * 60)
+        engine.unlock()
+        #expect(store.lastClosedTimerStart == timer.start)
+    }
+
+    @Test func anOrdinaryLockIsUntouched() {
+        let engine = makeEngine()
+        engine.lock()
+        clock.now += 13 * 3600
+        #expect(!engine.tick())
+        engine.syncShields()
+        #expect(store.session == .locked(since: clock.now - 13 * 3600))
+        #expect(shields.cleared == 0)
+        #expect(engine.timerJustFinished == nil)
+        #expect(store.finishedTimer == nil)
+        #expect(timers.scheduled.isEmpty)
+    }
+}

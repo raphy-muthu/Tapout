@@ -212,46 +212,55 @@ struct FocusTimeStep: View {
     }
 }
 
-/// Step 5: the first tag, and interests for Insights' comparisons.
-struct PairStep: View {
+/// Step 5: interests, for Insights' comparisons ("As long as 2 NFL games"). Nothing is required.
+struct InterestsStep: View {
     @Binding var interests: Set<Interest>
 
     @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
-        VStack(spacing: Space.xl) {
-            VStack(spacing: 20) {
-                ZStack {
-                    Circle().strokeBorder(Color.slateLine, lineWidth: 2).opacity(0.6).frame(width: 216, height: 216)
-                    Circle().fill(Color.slateGlow).frame(width: 164, height: 164).blur(radius: 20)
-                    Circle().fill(Color.surface2).frame(width: 168, height: 168)
-                    Image(systemName: "wave.3.right")
-                        .font(.system(size: 48, weight: .light))
-                        .foregroundStyle(Color.ink)
-                }
-                .frame(width: 220, height: 220)
-                .accessibilityHidden(true)
-                VStack(spacing: Space.xxs) {
-                    Text("Pair your first tag").font(.tTitle1).foregroundStyle(Color.ink)
-                    Text("Hold the top of your phone to it.").font(.tSubhead).foregroundStyle(Color.inkSecondary)
-                }
-                .multilineTextAlignment(.center)
+        VStack(alignment: .leading, spacing: Space.lg) {
+            VStack(alignment: .leading, spacing: Space.xs) {
+                Text("Your interests").font(.tLargeTitle).foregroundStyle(Color.ink)
+                Text("Insights compares your time to things you enjoy.")
+                    .font(.tBody)
+                    .foregroundStyle(Color.inkSecondary)
             }
-            VStack(alignment: .leading, spacing: Space.sm) {
-                SectionLabel(text: "Your interests")
-                // One column at accessibility sizes, so no interest breaks mid-word.
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Space.xs), count: typeSize.isAccessibilitySize ? 1 : 3),
-                          spacing: Space.xs) {
-                    ForEach(Interest.allCases, id: \.self) { interest in
-                        ChoiceChip(title: interest.title, isOn: interests.contains(interest), fillsWidth: true) {
-                            if interests.contains(interest) { interests.remove(interest) } else { interests.insert(interest) }
-                        }
+            // One column at accessibility sizes, so no interest breaks mid-word.
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Space.xs), count: typeSize.isAccessibilitySize ? 1 : 3),
+                      spacing: Space.xs) {
+                ForEach(Interest.allCases, id: \.self) { interest in
+                    ChoiceChip(title: interest.title, isOn: interests.contains(interest), fillsWidth: true) {
+                        if interests.contains(interest) { interests.remove(interest) } else { interests.insert(interest) }
                     }
                 }
             }
         }
-        .padding(.top, Space.md)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+}
+
+/// Step 6: the first tag.
+struct PairStep: View {
+    var body: some View {
+        VStack(spacing: Space.xl) {
+            ZStack {
+                Circle().strokeBorder(Color.slateLine, lineWidth: 2).opacity(0.6).frame(width: 216, height: 216)
+                Circle().fill(Color.slateGlow).frame(width: 164, height: 164).blur(radius: 20)
+                Circle().fill(Color.surface2).frame(width: 168, height: 168)
+                Image(systemName: "wave.3.right")
+                    .font(.system(size: 48, weight: .light))
+                    .foregroundStyle(Color.ink)
+            }
+            .frame(width: 220, height: 220)
+            .accessibilityHidden(true)
+            VStack(spacing: Space.xxs) {
+                Text("Pair your first tag").font(.tTitle1).foregroundStyle(Color.ink)
+                Text("Hold the top of your phone to it.").font(.tSubhead).foregroundStyle(Color.inkSecondary)
+            }
+            .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
@@ -290,5 +299,8 @@ private extension View {
     FocusTimeStep(window: .constant(.afternoons), days: .constant(ModeSchedule.weekdays)).stepPreview(.light)
 }
 
-#Preview("Pair · dark") { PairStep(interests: .constant([.sports, .movies])).stepPreview(.dark) }
-#Preview("Pair · light") { PairStep(interests: .constant([.sports, .movies])).stepPreview(.light) }
+#Preview("Interests · dark") { InterestsStep(interests: .constant([.sports, .movies])).stepPreview(.dark) }
+#Preview("Interests · light") { InterestsStep(interests: .constant([.sports, .movies])).stepPreview(.light) }
+
+#Preview("Pair · dark") { PairStep().stepPreview(.dark) }
+#Preview("Pair · light") { PairStep().stepPreview(.light) }

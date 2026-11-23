@@ -4,6 +4,8 @@ import SwiftUI
 struct IntentionField: View {
     @Binding var text: String
     let recent: [String]
+    /// Surface 1 on the page; a sheet that is itself surface 1 passes surface 2.
+    var fill: Color = .surface1
 
     var body: some View {
         VStack(spacing: Space.xs) {
@@ -17,7 +19,7 @@ struct IntentionField: View {
             // Grows with large text; at default sizes the 44pt minimum sets the height.
             .padding(.vertical, Space.xs)
             .frame(minHeight: 44)
-            .background(Color.surface1, in: Capsule(style: .continuous))
+            .background(fill, in: Capsule(style: .continuous))
             .cardShadow()
             .accessibilityHint("Optional")
             .onChange(of: text) { _, new in

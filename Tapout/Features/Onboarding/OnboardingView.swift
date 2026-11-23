@@ -1,8 +1,8 @@
 import FamilyControls
 import SwiftUI
 
-/// First-launch onboarding: design/screens/Main.dc.html steps 1–4, plus the new focus-time step.
-/// Saves everything at the end; pairing the first tag (or "Not now" on step 5) finishes it.
+/// First-launch onboarding: design/screens/Main.dc.html six steps: welcome, Screen Time, apps, focus time, interests, first tag.
+/// Saves everything at the end; pairing the first tag (or "Not now" on the last step) finishes it.
 struct OnboardingView: View {
     let model: AppModel
     let onFinish: () -> Void
@@ -30,7 +30,8 @@ struct OnboardingView: View {
                         onPickAllowed: { pickingAllowed = true }
                     )
                 case 4: ScrollsWhenTall { FocusTimeStep(window: $draft.window, days: $draft.days) }
-                default: ScrollsWhenTall { PairStep(interests: $draft.interests) }
+                case 5: ScrollsWhenTall { InterestsStep(interests: $draft.interests) }
+                default: ScrollsWhenTall { PairStep() }
                 }
             }
             // Fraunces styles are read once per render. The steps hold no state, so this resets nothing.
@@ -62,7 +63,7 @@ struct OnboardingView: View {
             }
             StepDots(step: draft.step, count: OnboardingDraft.stepCount)
             PrimaryButton(title: draft.cta) { Task { await next() } }
-            if draft.step >= 4 {
+            if draft.step == 4 || draft.step == OnboardingDraft.stepCount {
                 textButton("Not now", action: skip)
             } else if draft.step == 2 && accessOutcome?.offersSettings == true {
                 // iOS may not ask again after a decline, and Tapout can't block anything without
@@ -104,7 +105,7 @@ struct OnboardingView: View {
         withAnimation(reduceMotion ? Motion.reveal : Motion.ui) { draft.advance() }
     }
 
-    /// Step 4 skips the schedule; step 5 finishes without a tag (pair one in Places later).
+    /// Step 4 skips the schedule; the last step finishes without a tag (pair one in Places later).
     private func skip() {
         if draft.step == 4 {
             draft.window = nil
@@ -119,7 +120,7 @@ struct OnboardingView: View {
         UIApplication.shared.open(url)
     }
 
-    /// Cancelling the sheet with no place stays on step 5. With a place, onboarding is done.
+    /// Cancelling the sheet with no place stays on the last step. With a place, onboarding is done.
     private func pairingEnded() {
         if !model.places.isEmpty { finish() }
     }

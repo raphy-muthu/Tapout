@@ -2,9 +2,11 @@
 
 Copy for App Store Connect. Each field shows its character limit. Voice: plain, calm, no guilt, no emoji, no exclamation marks.
 
-## Name (30)
+## Name (30, 25 used)
 
-Tapout
+Tapout - Focus Reimagined
+
+The icon label under the app on the Home Screen stays "Tapout" (`CFBundleDisplayName`). The store name is separate. The bare name "Tapout" was already taken in App Store Connect.
 
 ## Subtitle (30)
 
@@ -19,7 +21,7 @@ Alternatives:
 
 Pair an NFC tag to a place. Tap it to lock the apps that pull you away, tap it again to open them. No account, nothing leaves your phone.
 
-## Description (4000, 1601 used)
+## Description (4000, about 1900 used)
 
 Tapout puts your distracting apps away with one tap.
 
@@ -29,6 +31,10 @@ How it works
 - Pair tags to places. Each tag is a named place: Kitchen, Desk, Bedside.
 - Tap to lock. Your chosen apps show a calm Sealed screen.
 - Tap again to unlock. Optionally write a short intention before you start.
+- Or set a timer instead: lock for 45 minutes and the apps open themselves.
+
+Timer lock
+No tag handy, or just need an hour? Pick a length, from 5 minutes to 12 hours, and tap Start. Your apps are sealed until the time is up, then they open on their own. A paired tag or an emergency pass can still end it early.
 
 Modes
 Make a mode for each part of your day. Each mode has its own apps, an optional schedule, and the places that can unlock it. Always-allowed apps are set once in Settings.
@@ -50,9 +56,11 @@ Everything stays on your iPhone. No account, no server, no analytics, no ads. Ta
 
 You will need NFC tags, sold separately online. Any NTAG213, NTAG215 or NTAG216 sticker works. Tapout needs an iPhone that runs iOS 17 with NFC (iPhone XS or later) and Screen Time access.
 
-## Keywords (100)
+## Keywords (100, 99 used)
 
-focus,nfc,screen time,app blocker,distraction,digital detox,habit,study,deep work,phone,limit,sleep
+nfc,screen time,app blocker,distraction,digital detox,habit,study,deep work,phone,limit,sleep,timer
+
+"focus" and "reimagined" are left out because the name already carries them. Apple indexes the name, so repeating them wastes space.
 
 ## Category
 
@@ -89,9 +97,9 @@ There is no login and no account.
 To review the app without a tag:
 1. Open Tapout and follow onboarding.
 2. Allow Screen Time.
-3. Choose apps, then pick an optional schedule.
+3. Choose apps, then pick an optional schedule (or Not now), then any interests (or none), tapping Continue on each.
 4. At "Pair your first tag", tap Not now.
 5. You land on Home, unlocked. Modes (including the app picker and schedules), Places, Insights and Settings all work.
-6. Locking, the Sealed screen and emergency passes need a paired NFC tag. They are shown in the attached recording.
+6. The Timer button on Home locks the active mode's apps for a length you choose, with no tag. It needs apps chosen in Modes first. The Sealed screen, emergency passes and unlocking with a tag need a paired NFC tag. They are shown in the attached recording.
 
 Bank, transit and hotel cards are not read. An NTAG213/215/216 sticker is needed.

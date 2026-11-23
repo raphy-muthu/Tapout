@@ -65,4 +65,50 @@ struct LockSnapshotTests {
         #expect(shot.modeName == "Deep work")
         #expect(shot.placeName == "Kitchen")
     }
+
+    // MARK: Timer lock
+
+    @Test func aTimerLockGivesTheEndDate() {
+        store.session = .locked(since: now - 900)
+        store.timerLock = TimerLock(start: now - 900, duration: 2700)
+        let shot = snapshot()
+        #expect(shot.timerEndsAt == now + 1800)
+        #expect(shot.state == .locked(countingFrom: now - 900))
+    }
+
+    @Test func noEndDateWithoutATimerLock() {
+        store.session = .locked(since: now - 900)
+        #expect(snapshot().timerEndsAt == nil)
+    }
+
+    @Test func noEndDateOnceTheTimerIsDue() {
+        store.session = .locked(since: now - 2700)
+        store.timerLock = TimerLock(start: now - 2700, duration: 2700)
+        let shot = snapshot()
+        #expect(shot.timerEndsAt == nil)
+        #expect(shot.state == .unlocked)
+    }
+
+    @Test func noEndDateWhileUnlocked() {
+        store.timerLock = TimerLock(start: now - 900, duration: 2700)
+        #expect(snapshot().timerEndsAt == nil)
+        #expect(snapshot().state == .unlocked)
+    }
+
+    @Test func aPassDuringATimerKeepsTheEndDate() {
+        store.session = .emergency(relockAt: now + 200, duration: 300)
+        store.timerLock = TimerLock(start: now - 900, duration: 2700)
+        store.lockHistory = [LockRecord(start: now - 900, end: nil, placeUID: nil, modeID: mode.id,
+                                        passes: [DateInterval(start: now - 100, end: now + 200)])]
+        let shot = snapshot()
+        #expect(shot.timerEndsAt == now + 1800)
+        #expect(shot.state == .open(relockAt: now + 200, resumesFrom: now - 600))
+    }
+
+    @Test func aTimerLockThatEndedDuringAPassReadsUnlocked() {
+        store.session = .emergency(relockAt: now + 600, duration: 300)
+        store.timerLock = TimerLock(start: now - 2700, duration: 2700)
+        #expect(snapshot().state == .unlocked)
+        #expect(snapshot().timerEndsAt == nil)
+    }
 }

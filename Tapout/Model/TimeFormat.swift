@@ -21,6 +21,34 @@ enum TimeFormat {
         }
     }
 
+    /// A timer's length, rounded to the minute: "45 min", "1 h", "1 h 30 min", "12 h".
+    /// Same words as the "Time's up" notice in `ScheduleNotice`.
+    static func length(_ seconds: TimeInterval) -> String {
+        let minutes = roundedMinutes(seconds)
+        switch (minutes / 60, minutes % 60) {
+        case (0, let m): return "\(m) min"
+        case (let h, 0): return "\(h) h"
+        case (let h, let m): return "\(h) h \(m) min"
+        }
+    }
+
+    /// VoiceOver form of `length`: "45 minutes", "1 hour, 30 minutes".
+    static func spokenLength(_ seconds: TimeInterval) -> String {
+        spoken(TimeInterval(roundedMinutes(seconds) * 60))
+    }
+
+    /// A time of day in the locale's short style: "3:45 PM", "15:45".
+    static func clockTime(_ date: Date, locale: Locale = .current, timeZone: TimeZone = .current) -> String {
+        var style = Date.FormatStyle(date: .omitted, time: .shortened)
+        style.locale = locale
+        style.timeZone = timeZone
+        return date.formatted(style)
+    }
+
+    private static func roundedMinutes(_ seconds: TimeInterval) -> Int {
+        max(0, Int((seconds / 60).rounded()))
+    }
+
     /// VoiceOver form: "47 minutes", "1 hour, 5 minutes", "30 seconds".
     static func spoken(_ seconds: TimeInterval) -> String {
         let formatter = DateComponentsFormatter()

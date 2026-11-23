@@ -335,4 +335,235 @@ struct AppModelLockTests {
         #expect(try #require(model.history.last).modeID == evenings.id)
         #expect(model.activeMode.id == evenings.id)
     }
+
+    // MARK: Timer locks
+
+    private func timer(_ minutes: Double = 45) -> TimerLock {
+        TimerLock(start: clock.now, duration: minutes * 60)
+    }
+
+    @Test func aModeWithoutAppsHasNone() {
+        let model = makeModel()
+        #expect(!model.activeModeHasApps)
+        #expect(store.activeShieldPlan.isEmpty)
+    }
+
+    @Test func theModelReadsTheTimerFromTheStore() {
+        let model = makeModel()
+        #expect(model.timerLock == nil)
+        let running = timer()
+        store.timerLock = running
+        model.reload()
+        #expect(model.timerLock == running)
+        store.timerLock = nil
+        model.reload()
+        #expect(model.timerLock == nil)
+    }
+
+    @Test func aTimerLockWithNoPlaceStartsAndCounts() throws {
+        let model = makeModel()
+        model.startLock(placeUID: nil, intention: nil)
+        let record = try #require(model.history.last)
+        #expect(record.placeUID == nil)
+        #expect(record.end == nil)
+        clock.now += 1200
+        model.finishLock()
+        #expect(model.history.last?.end == clock.now)
+        #expect(model.phoneFreeToday() == 1200)
+        #expect(model.totalLocked == 1200)
+    }
+
+    @Test func finishLockAtAnEarlierInstantEndsThereAndShortensAPass() throws {
+        let model = makeModel()
+        model.startLock(placeUID: nil, intention: nil)
+        let end = clock.now + 600
+        model.startPass(until: clock.now + 3000)
+        clock.now += 3600
+        let record = try #require(model.finishLock(at: end))
+        #expect(record.end == end)
+        #expect(record.passes.last?.end == end)
+    }
+
+    @Test func finishLockNeverEndsBeforeItStarted() throws {
+        let model = makeModel()
+        model.startLock(placeUID: nil, intention: nil)
+        let start = clock.now
+        let record = try #require(model.finishLock(at: start - 500))
+        #expect(record.end == start)
+    }
+
+    @Test func closingAFinishedTimerEndsTheRecordAtTheTimersEnd() throws {
+        let model = makeModel()
+        let finished = timer()
+        model.startLock(placeUID: nil, intention: "Essay")
+        store.finishedTimer = finished
+        clock.now += 45 * 60 + 3600 // the app was closed for an hour past the end
+        let result = try #require(model.closeFinishedTimer())
+        #expect(result.timer == finished)
+        #expect(result.record?.end == finished.endsAt)
+        #expect(result.record?.intention == "Essay")
+        #expect(model.history.last?.end == finished.endsAt)
+        #expect(store.finishedTimer == nil)
+        #expect(model.currentIntention == nil)
+        #expect(model.closeFinishedTimer() == nil)
+        #expect(model.totalLocked == 45 * 60)
+    }
+
+    @Test func aPassOpenAtTheTimersEndIsShortenedToIt() throws {
+        let model = makeModel()
+        let finished = timer(30)
+        model.startLock(placeUID: nil, intention: nil)
+        clock.now += 20 * 60
+        model.startPass(until: clock.now + 600 + 5 * 60) // runs 5 minutes past the timer
+        store.finishedTimer = finished
+        clock.now += 3600
+        let record = try #require(model.closeFinishedTimer()?.record)
+        #expect(record.passes.first?.end == finished.endsAt)
+        #expect(record.lockedTime(now: clock.now) == 20 * 60)
+    }
+
+    @Test func closingWithNoOpenRecordStillClearsTheMarker() throws {
+        let model = makeModel()
+        let finished = timer()
+        store.finishedTimer = finished
+        let result = try #require(model.closeFinishedTimer())
+        #expect(result.record == nil)
+        #expect(store.finishedTimer == nil)
+    }
+
+    @Test func reconcileKeepsTheRecordOfAFinishedTimer() {
+        let model = makeModel()
+        model.startLock(placeUID: nil, intention: "Essay")
+        store.finishedTimer = timer()
+        model.reconcile(with: .unlocked)
+        #expect(model.history.count == 1)
+        #expect(model.history.first?.end == nil)
+        #expect(model.currentIntention == "Essay")
+        model.discardInterruptedLocks()
+        #expect(model.history.count == 1)
+    }
+
+    @Test func reconcileWithoutTheMarkerStillDiscards() {
+        let model = makeModel()
+        model.startLock(placeUID: nil, intention: "Essay")
+        model.reconcile(with: .unlocked)
+        #expect(model.history.isEmpty)
+    }
+
+    @Test func reconcileLeavesARunningTimerLockAlone() throws {
+        let model = makeModel()
+        let running = timer()
+        model.startLock(placeUID: nil, intention: "Essay")
+        store.timerLock = running
+        model.reconcile(with: .locked(since: running.start))
+        #expect(model.history.count == 1)
+        #expect(model.history.first?.end == nil)
+        #expect(model.timerLock == running)
+    }
+
+    @Test func aNewLockAfterAFinishedTimerDoesNotLeaveTwoOpenRecords() {
+        let model = makeModel()
+        let finished = timer(30)
+        model.startLock(placeUID: nil, intention: nil)
+        store.finishedTimer = finished
+        clock.now += 3600
+        model.startLock(placeUID: kitchen, intention: nil)
+        #expect(model.history.filter { $0.end == nil }.count == 1)
+        #expect(store.finishedTimer == nil)
+        #expect(model.history.first?.end == finished.endsAt)
+    }
+
+    @Test func aLockThatBeganAfterAFinishedTimerDoesNotInheritItsRecord() {
+        let model = makeModel()
+        let finished = timer(30)
+        model.startLock(placeUID: nil, intention: nil)
+        store.finishedTimer = finished
+        clock.now += 3600
+        model.reconcile(with: .locked(since: clock.now)) // a schedule started a lock
+        #expect(model.history.count == 2)
+        #expect(model.history.first?.end == finished.endsAt)
+        #expect(model.history.last?.end == nil)
+        #expect(model.history.last?.start == clock.now)
+    }
+
+    // MARK: Finishing a timer once
+
+    @Test func theMonitorFinishingFirstIsCaughtWhenTheSessionTurnsUnlocked() throws {
+        let model = makeModel()
+        let running = timer()
+        model.startLock(placeUID: nil, intention: "Essay")
+        store.timerLock = running
+        store.session = .locked(since: running.start)
+        // The monitor's callback lands 30 s early, before the app's tick.
+        #expect(TimerLock.finish(store: store, shields: FakeShields(), now: running.endsAt - 30,
+                                 early: TimerLock.earlyTolerance, accessApproved: true)?.timer == running)
+        clock.now = running.endsAt + 1
+        let finish = try #require(model.sessionChanged(to: .unlocked))
+        #expect(finish.timer == running)
+        #expect(finish.record?.end == running.endsAt)
+        #expect(finish.record?.intention == "Essay")
+        #expect(model.history.count == 1)
+        #expect(model.sessionChanged(to: .unlocked) == nil)
+        #expect(model.history.count == 1)
+    }
+
+    @Test func aTagUnlockGivesNoFinish() {
+        let model = makeModel()
+        model.startLock(placeUID: nil, intention: nil)
+        model.finishLock()
+        #expect(model.sessionChanged(to: .unlocked) == nil)
+        #expect(model.history.count == 1)
+    }
+
+    @Test func aSecondFinishOfTheSameTimerIsANoOp() throws {
+        let model = makeModel()
+        let finished = timer(30)
+        model.startLock(placeUID: nil, intention: "Essay")
+        store.finishedTimer = finished
+        clock.now += 30 * 60
+        #expect(model.closeFinishedTimer() != nil)
+        // The monitor's late write of the same timer lands after the app closed it.
+        store.finishedTimer = finished
+        #expect(model.closeFinishedTimer() == nil)
+        #expect(store.finishedTimer == nil)
+        #expect(model.history.count == 1)
+        #expect(model.history.first?.end == finished.endsAt)
+    }
+
+    @Test func aReplayedMarkerDoesNotKeepAnInterruptedLockOpen() {
+        let model = makeModel()
+        let finished = timer(30)
+        store.lastClosedTimerStart = finished.start
+        store.finishedTimer = finished
+        clock.now += 3600
+        model.startLock(placeUID: nil, intention: nil)
+        clock.now += 60
+        model.reconcile(with: .unlocked)
+        #expect(model.history.isEmpty)
+    }
+
+    @Test func aTimerATagAlreadyEndedShowsNoTimesUp() {
+        let model = makeModel()
+        let finished = timer(30)
+        model.startLock(placeUID: nil, intention: nil)
+        model.finishLock()
+        store.lastClosedTimerStart = finished.start // the engine's unlock
+        store.finishedTimer = finished // the monitor's early callback, racing the tag
+        #expect(model.closeFinishedTimer() == nil)
+        #expect(store.finishedTimer == nil)
+    }
+
+    @Test func aNewerTimerStillFinishes() throws {
+        let model = makeModel()
+        let old = timer(30)
+        store.lastClosedTimerStart = old.start
+        clock.now += 3600
+        let newer = timer(30)
+        model.startLock(placeUID: nil, intention: nil)
+        store.finishedTimer = newer
+        clock.now += 30 * 60
+        let finish = try #require(model.closeFinishedTimer())
+        #expect(finish.timer == newer)
+        #expect(store.lastClosedTimerStart == newer.start)
+    }
 }

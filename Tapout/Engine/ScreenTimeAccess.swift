@@ -20,10 +20,21 @@ enum ScreenTimeAccess {
         var offersSettings: Bool { self == .declined }
     }
 
+    #if DEBUG
+    /// Starts the -mockScreenTimeFlash clock at the first read, which happens at launch.
+    private static let launchedAt = Date.now
+    #endif
+
     /// What Screen Time access is right now; it can be turned off in Settings at any time.
     /// The simulator counts as approved, unless launched with -mockScreenTimeRevoked.
     @MainActor static var status: ScheduledLock.LiveAccess {
         #if targetEnvironment(simulator)
+        #if DEBUG
+        // Reproduces the stale read iOS gives at launch: not approved for the first 0.8 s, then approved.
+        if ProcessInfo.processInfo.arguments.contains("-mockScreenTimeFlash"), Date.now.timeIntervalSince(launchedAt) < 0.8 {
+            return .notDetermined
+        }
+        #endif
         return ProcessInfo.processInfo.arguments.contains("-mockScreenTimeRevoked") ? .denied : .approved
         #else
         let status = AuthorizationCenter.shared.authorizationStatus

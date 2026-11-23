@@ -62,12 +62,14 @@ struct WeekWidget: Widget {
     SnapshotEntry(date: .now, snapshot: .sampleLocked(for: LockSnapshot.sampleLockLengths[2]))
     SnapshotEntry(date: .now, snapshot: .sample(.open(relockAt: .now + 272, resumesFrom: .now - 2832)))
     SnapshotEntry(date: .now, snapshot: .sample(.unlocked))
+    SnapshotEntry(date: .now, snapshot: .sampleTimer(length: LockSnapshot.sampleTimers[0].length, left: LockSnapshot.sampleTimers[0].left))
 }
 
 #Preview("Medium", as: .systemMedium) {
     WeekWidget()
 } timeline: {
     SnapshotEntry(date: .now, snapshot: .sample(.locked(countingFrom: .now - 2832)))
+    SnapshotEntry(date: .now, snapshot: .sampleTimer(length: LockSnapshot.sampleTimers[0].length, left: LockSnapshot.sampleTimers[0].left))
 }
 
 #Preview("Circular", as: .accessoryCircular) {

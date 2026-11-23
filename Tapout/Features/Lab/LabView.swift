@@ -17,6 +17,7 @@ struct LabView: View {
                 sessionSection
                 Section("Surfaces") {
                     NavigationLink("Widgets") { SurfaceGallery(model: model) }
+                    NavigationLink("Moments") { MomentsGallery(model: model) }
                 }
                 logSection
             }

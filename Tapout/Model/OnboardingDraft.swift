@@ -28,7 +28,7 @@ enum FocusWindow: String, CaseIterable, Identifiable {
 
 /// Onboarding's answers, saved together on the last step.
 struct OnboardingDraft {
-    static let stepCount = 5
+    static let stepCount = 6
 
     var step = 1
     var selection = FamilyActivitySelection()
@@ -47,7 +47,7 @@ struct OnboardingDraft {
         switch step {
         case 1: "Get started"
         case 2: "Allow"
-        case 3, 4: "Continue"
+        case 3, 4, 5: "Continue"
         default: "Scan tag"
         }
     }

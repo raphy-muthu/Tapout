@@ -147,6 +147,33 @@ final class SharedStore {
         set { write(newValue, .screenTimeApproved) }
     }
 
+    /// The running timer lock. Absent or damaged reads as no timer: a damaged value must never keep a
+    /// lock timed forever, and a lost timer leaves an ordinary lock, which a tag still opens.
+    var timerLock: TimerLock? {
+        get { read(.timerLock, absent: nil, corrupt: nil) }
+        set { write(newValue, .timerLock) }
+    }
+
+    /// A timer that ended, until the app closes its record. The monitor may finish a timer while the app is closed.
+    var finishedTimer: TimerLock? {
+        get { read(.finishedTimer, absent: nil, corrupt: nil) }
+        set { write(newValue, .finishedTimer) }
+    }
+
+    /// The name of the mode whose scheduled lock took over when `finishedTimer` ended (written just before it),
+    /// or nil when the timer opened the apps.
+    var finishedTimerHandover: String? {
+        get { read(.finishedTimerHandover, absent: nil, corrupt: nil) }
+        set { write(newValue, .finishedTimerHandover) }
+    }
+
+    /// The start of the last timer the app ended or closed (a tag unlock, or closing its record after the end).
+    /// A `finishedTimer` that started at or before it is a late write of a timer already handled, so it is ignored.
+    var lastClosedTimerStart: Date? {
+        get { read(.lastClosedTimerStart, absent: nil, corrupt: nil) }
+        set { write(newValue, .lastClosedTimerStart) }
+    }
+
     var log: [LogEntry] {
         read(.log, absent: [], corrupt: [])
     }
@@ -166,6 +193,7 @@ final class SharedStore {
         case modes, activeModeID, activeModeName, defaultPlace, lockHistory, alwaysAllowed
         case currentIntention, interests, seenMilestones
         case lastUnlockAt, scheduleSavedAt, registeredSchedules, screenTimeApproved
+        case timerLock, finishedTimer, finishedTimerHandover, lastClosedTimerStart
     }
 
     /// `absent` when nothing was ever stored. `corrupt` when data is there but won't decode;

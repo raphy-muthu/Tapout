@@ -32,7 +32,18 @@ struct OnboardingDraftTests {
             titles.append(draft.cta)
             draft.advance()
         }
-        #expect(titles == ["Get started", "Allow", "Continue", "Continue", "Scan tag", "Scan tag"])
+        #expect(titles == ["Get started", "Allow", "Continue", "Continue", "Continue", "Scan tag"])
+        #expect(draft.step == OnboardingDraft.stepCount)
+    }
+
+    @Test func interestsComeBeforePairingAndFinishOnPairing() {
+        var draft = OnboardingDraft()
+        while draft.step < 5 { draft.advance() }
+        #expect(draft.cta == "Continue")      // the interests step
+        draft.advance()
+        #expect(draft.step == OnboardingDraft.stepCount)
+        #expect(draft.cta == "Scan tag")      // pairing is last
+        draft.advance()
         #expect(draft.step == OnboardingDraft.stepCount)
     }
 }

@@ -7,6 +7,8 @@ struct HomeView: View {
     @Binding var intentionDraft: String
     /// Reads a tag to lock or unlock. The locked orb uses it too: tap the orb, then the tag.
     let onScan: () -> Void
+    /// Opens the timer sheet: a lock that ends by itself, no tag needed.
+    let onTimer: () -> Void
     let onEmergencyPass: () -> Void
     let onOpenSettings: () -> Void
 
@@ -50,9 +52,32 @@ struct HomeView: View {
             Spacer(minLength: 0)
             VStack(spacing: Space.sm) {
                 IntentionField(text: $intentionDraft, recent: model.recentIntentions)
-                PrimaryButton(title: "Scan", systemImage: "wave.3.right", action: onScan)
+                // Side by side; stacked at accessibility sizes so neither label truncates.
+                (typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: Space.sm))
+                    : AnyLayout(HStackLayout(spacing: Space.sm))) {
+                    PrimaryButton(title: "Scan", systemImage: "wave.3.right", action: onScan)
+                    timerButton
+                }
             }
         }
+    }
+
+    /// The quiet partner to Scan: a surface pill, never a second primary.
+    private var timerButton: some View {
+        Button(action: onTimer) {
+            HStack(spacing: Space.xs) {
+                Image(systemName: "timer").font(.system(size: 20, weight: .regular))
+                Text("Timer").font(.tHeadline)
+            }
+            .foregroundStyle(Color.ink)
+            .padding(.horizontal, Space.lg)
+            .frame(maxWidth: typeSize.isAccessibilitySize ? .infinity : nil, minHeight: 56)
+            .background(Color.surface2, in: Capsule(style: .continuous))
+            .contentShape(Capsule(style: .continuous))
+        }
+        .buttonStyle(PressScaleStyle())
+        .fixedSize(horizontal: !typeSize.isAccessibilitySize, vertical: false)
+        .accessibilityHint("Locks for a set time")
     }
 
     private func orbAndState(size: CGFloat) -> some View {
@@ -70,12 +95,15 @@ struct HomeView: View {
     private func locked(at date: Date) -> some View {
         // Without pass time. The record can be a moment behind the lock state at launch, and previews have none.
         let elapsed = model.runningLockTime(at: date) ?? engine.session.elapsed(at: date)
+        let timer = model.timerLock
         return VStack(spacing: 0) {
             Spacer(minLength: 0)
             VStack(spacing: 20) {
                 Button(action: onScan) {
                     // Smaller at accessibility sizes, so the intention and the pass link fit without truncating.
-                    OrbView(tone: .ember, ring: 1, size: typeSize.isAccessibilitySize ? 120 : 244)
+                    // A timer's ring empties as its time runs out.
+                    OrbView(tone: .ember, ring: timer?.remainingFraction(at: date) ?? 1,
+                            size: typeSize.isAccessibilitySize ? 120 : 244)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Scan to unlock")
@@ -83,11 +111,15 @@ struct HomeView: View {
                 .lockMomentMatch(.orb)
 
                 VStack(spacing: Space.xs) {
-                    TimerText(text: TimeFormat.clock(elapsed))
-                        .accessibilityLabel("Locked for \(TimeFormat.spoken(elapsed))")
-                        .lockMomentMatch(.timer)
-                    StateLabel(text: "Locked", systemImage: "lock", color: .emberInk)
-                        .lockMomentMatch(.stateWord)
+                    if let timer {
+                        timerReadout(timer, at: date)
+                    } else {
+                        TimerText(text: TimeFormat.clock(elapsed))
+                            .accessibilityLabel("Locked for \(TimeFormat.spoken(elapsed))")
+                            .lockMomentMatch(.timer)
+                        StateLabel(text: "Locked", systemImage: "lock", color: .emberInk)
+                            .lockMomentMatch(.stateWord)
+                    }
                     if let intention = model.currentIntention {
                         Text(intention)
                             .font(.tSubhead)
@@ -113,6 +145,26 @@ struct HomeView: View {
                 .buttonStyle(.plain)
             }
         }
+    }
+
+    /// A timer lock counts down to its end, with the end time beneath.
+    @ViewBuilder
+    private func timerReadout(_ timer: TimerLock, at date: Date) -> some View {
+        let remaining = timer.remaining(at: date).rounded(.up)
+        VStack(spacing: Space.xs) {
+            TimerText(text: TimeFormat.clock(remaining))
+                .lockMomentMatch(.timer)
+            StateLabel(text: "Locked · timer", systemImage: "lock", color: .emberInk)
+                .lockMomentMatch(.stateWord)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Locked, timer, \(TimeFormat.spoken(remaining)) left")
+        .accessibilityAddTraits(.updatesFrequently)
+        Text("Ends at \(TimeFormat.clockTime(timer.endsAt))")
+            .font(.tSubhead)
+            .foregroundStyle(Color.inkTertiary)
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     private func emergency(at date: Date) -> some View {

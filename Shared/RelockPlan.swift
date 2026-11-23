@@ -45,34 +45,46 @@ enum RelockPlan {
     }
 }
 
-/// Starts and stops the emergency relock schedule.
+/// The DeviceActivity name that ends a timer lock. Scheduled with the same `RelockPlan.schedule` strategies.
+enum TimerPlan {
+    nonisolated(unsafe) static let activity = DeviceActivityName("tapout.timer")
+}
+
+/// Starts and stops a one-off end schedule: the emergency relock, or a timer lock's end.
 protocol RelockScheduling {
     func schedule(relockAt: Date, now: Date, strategy: RelockStrategy) throws
     func cancel()
-    /// What DeviceActivity actually stored for the relock activity, for the log.
+    /// What DeviceActivity actually stored for the activity, for the log.
     func scheduledSummary() -> String
 }
 
 struct RelockScheduler: RelockScheduling {
     private static let logger = Logger(subsystem: "com.raphymuthu.tapout", category: "relock")
 
+    /// `RelockPlan.activity` for the emergency relock, `TimerPlan.activity` for a timer's end.
+    let activity: DeviceActivityName
+
+    init(activity: DeviceActivityName = RelockPlan.activity) {
+        self.activity = activity
+    }
+
     func schedule(relockAt: Date, now: Date, strategy: RelockStrategy) throws {
         let center = DeviceActivityCenter()
-        center.stopMonitoring([RelockPlan.activity])
+        center.stopMonitoring([activity])
         try center.startMonitoring(
-            RelockPlan.activity,
+            activity,
             during: RelockPlan.schedule(relockAt: relockAt, now: now, strategy: strategy)
         )
-        Self.logger.info("Scheduled: \(scheduledSummary(), privacy: .public)")
+        Self.logger.info("Scheduled \(activity.rawValue, privacy: .public): \(scheduledSummary(), privacy: .public)")
     }
 
     func cancel() {
-        DeviceActivityCenter().stopMonitoring([RelockPlan.activity])
+        DeviceActivityCenter().stopMonitoring([activity])
     }
 
     func scheduledSummary() -> String {
         let center = DeviceActivityCenter()
-        let interval = center.schedule(for: RelockPlan.activity)?.nextInterval
+        let interval = center.schedule(for: activity)?.nextInterval
             .map { "\($0.start.formatted(date: .omitted, time: .standard))-\($0.end.formatted(date: .omitted, time: .standard))" }
         return "\(interval ?? "none"), \(center.activities.count) activities"
     }

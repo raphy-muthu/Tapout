@@ -111,4 +111,69 @@ struct SnapshotTimelineTests {
         #expect(LockSnapshot.sample(.unlocked).state(at: relockAt) == .unlocked)
         #expect(LockSnapshot.sample(.locked(countingFrom: relockAt)).state(at: relockAt + 60) == .locked(countingFrom: relockAt))
     }
+
+    // MARK: Timer lock
+
+    @Test func aTimerEndsTheLockedWindowWithAnUnlockedEntry() throws {
+        let now = date(9, 14)
+        store.session = .locked(since: now - 900)
+        store.timerLock = TimerLock(start: now - 900, duration: 3000)
+        store.lockHistory = [LockRecord(start: now - 900, end: nil, placeUID: nil, modeID: mode.id)]
+        let result = timeline(at: now)
+        let end = now + 2100
+        #expect(result.entries.map(\.date) == [now, now + 900, now + 1800, end])
+        #expect(result.reloadAfter == end)
+        #expect(result.entries.dropLast().allSatisfy { $0.snapshot.timerEndsAt == end })
+        let last = try #require(result.entries.last)
+        #expect(last.snapshot.state == .unlocked)
+        #expect(last.snapshot.timerEndsAt == nil)
+        // The record counts up to the timer's end, not past it.
+        #expect(last.snapshot.today == 3000)
+    }
+
+    @Test func aTimerOnAQuarterHourIsntDoubled() {
+        let now = date(9, 14)
+        store.session = .locked(since: now)
+        store.timerLock = TimerLock(start: now, duration: 1800)
+        store.lockHistory = [LockRecord(start: now, end: nil, placeUID: nil, modeID: mode.id)]
+        #expect(timeline(at: now).entries.map(\.date) == [now, now + 900, now + 1800])
+    }
+
+    @Test func aTimerLongerThanTheWindowKeepsTheUsualTimeline() {
+        let now = date(9, 14)
+        store.session = .locked(since: now)
+        store.timerLock = TimerLock(start: now, duration: 6 * 3600)
+        store.lockHistory = [LockRecord(start: now, end: nil, placeUID: nil, modeID: mode.id)]
+        let result = timeline(at: now)
+        #expect(result.entries.map(\.date) == (0...16).map { now + Double($0) * 900 })
+        #expect(result.reloadAfter == now + 4 * 3600)
+        #expect(result.entries.allSatisfy { $0.snapshot.timerEndsAt == now + 6 * 3600 })
+    }
+
+    @Test func aTimerThatEndsDuringAPassUnlocksRightAfterIt() throws {
+        let now = date(9, 14)
+        store.session = .emergency(relockAt: now + 600, duration: 300)
+        store.timerLock = TimerLock(start: now - 900, duration: 1500)
+        store.lockHistory = [LockRecord(start: now - 900, end: nil, placeUID: nil, modeID: mode.id,
+                                        passes: [DateInterval(start: now - 100, end: now + 600)])]
+        let result = timeline(at: now)
+        #expect(result.entries.map(\.date) == [now, now + 600])
+        #expect(result.entries[0].snapshot.state == .open(relockAt: now + 600, resumesFrom: now - 200))
+        #expect(result.entries[1].snapshot.state == .unlocked)
+    }
+
+    @Test func aTimerEndingAfterAPassGetsTheLockUntilItsEnd() throws {
+        let now = date(9, 14)
+        let relockAt = now + 200
+        store.session = .emergency(relockAt: relockAt, duration: 300)
+        store.timerLock = TimerLock(start: now - 900, duration: 2100)
+        store.lockHistory = [LockRecord(start: now - 900, end: nil, placeUID: nil, modeID: mode.id,
+                                        passes: [DateInterval(start: now - 100, end: relockAt)])]
+        let result = timeline(at: now)
+        let end = now + 1200
+        #expect(result.entries.map(\.date) == [now, relockAt, relockAt + 900, end])
+        #expect(result.entries[1].snapshot.timerEndsAt == end)
+        #expect(result.entries.last?.snapshot.state == .unlocked)
+        #expect(result.reloadAfter == end)
+    }
 }
