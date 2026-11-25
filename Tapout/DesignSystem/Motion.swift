@@ -11,4 +11,18 @@ enum Motion {
     static var lockReduced: Animation { .easeInOut(duration: 0.25) }
     static var unlockReduced: Animation { .easeInOut(duration: 0.35) }
     static var readyPulse: Animation { .easeInOut(duration: 1.6).repeatForever(autoreverses: true) }
+
+    /// The orb's slate-to-ember change.
+    static var tone: Animation { .easeInOut(duration: 0.9) }
+    /// Background warmth after a lock.
+    static var bloom: Animation { .easeOut(duration: 1.2) }
+    /// A chart or dial following a finger.
+    static var scrub: Animation { .spring(response: 0.25, dampingFraction: 0.9) }
+    /// A step settling into place.
+    static var detent: Animation { .spring(response: 0.18, dampingFraction: 0.8) }
+
+    /// The animation to use: `animation`, or a short crossfade when Reduce Motion is on.
+    static func resolved(_ animation: Animation, reduceMotion: Bool) -> Animation {
+        reduceMotion ? .easeInOut(duration: 0.25) : animation
+    }
 }

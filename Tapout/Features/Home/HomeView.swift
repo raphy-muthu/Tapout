@@ -14,6 +14,7 @@ struct HomeView: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var typeSize
+    @LivingGlassFlag private var livingGlass
 
     var body: some View {
         VStack(spacing: 0) {
@@ -24,6 +25,9 @@ struct HomeView: View {
                 onSelectMode: { model.setActiveMode($0) },
                 onOpenSettings: onOpenSettings
             )
+            // Above the glass orbs' warmth, which spills past the orb. Only with the switch on, so the
+            // classic orb's glow draws exactly as before.
+            .zIndex(livingGlass ? 1 : 0)
             TimelineView(.periodic(from: .now, by: 0.5)) { context in
                 switch engine.session {
                 case .unlocked: unlocked
@@ -82,7 +86,7 @@ struct HomeView: View {
 
     private func orbAndState(size: CGFloat) -> some View {
         VStack(spacing: Space.xl) {
-            OrbView(tone: .slate, size: size)
+            LivingOrb(tone: .slate, size: size, ripplesOnAppear: true, warmth: true)
             VStack(spacing: Space.xxs) {
                 StateLabel(text: "Unlocked", systemImage: "lock.open", color: .slateInk)
                 Text("\(TimeFormat.short(model.phoneFreeToday())) phone-free today")
@@ -102,8 +106,8 @@ struct HomeView: View {
                 Button(action: onScan) {
                     // Smaller at accessibility sizes, so the intention and the pass link fit without truncating.
                     // A timer's ring empties as its time runs out.
-                    OrbView(tone: .ember, ring: timer?.remainingFraction(at: date) ?? 1,
-                            size: typeSize.isAccessibilitySize ? 120 : 244)
+                    LivingOrb(tone: .ember, ring: timer?.remainingFraction(at: date) ?? 1,
+                              size: typeSize.isAccessibilitySize ? 120 : 244, ripplesOnAppear: true, warmth: true)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Scan to unlock")
@@ -172,8 +176,9 @@ struct HomeView: View {
         return VStack(spacing: 0) {
             Spacer(minLength: 0)
             VStack(spacing: 20) {
-                OrbView(tone: .slate, ringTone: .ember,
-                        ring: engine.session.remainingFraction(at: date), size: typeSize.isAccessibilitySize ? 140 : 244)
+                LivingOrb(tone: .slate, ringTone: .ember,
+                          ring: engine.session.remainingFraction(at: date), size: typeSize.isAccessibilitySize ? 140 : 244,
+                          ripplesOnAppear: true, warmth: true)
                 VStack(spacing: Space.xxs) {
                     Text("Relocks in")
                         .font(.tSubhead)
@@ -193,7 +198,7 @@ struct HomeView: View {
     }
 
     private func relockNow() {
-        Haptics.lock()
+        LivingFeedback.lock()
         withAnimation(reduceMotion ? Motion.lockReduced : Motion.lock) { engine.relockNow() }
         model.endPass()
     }

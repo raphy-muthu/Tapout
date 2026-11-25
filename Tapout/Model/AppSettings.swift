@@ -36,4 +36,17 @@ enum AppSettings {
     static func hapticsEnabled(in defaults: UserDefaults = .standard) -> Bool {
         defaults.object(forKey: hapticsKey) as? Bool ?? true
     }
+
+    /// The shader-drawn orb. Off unless the owner turned it on (from the Lab).
+    static let livingGlassKey = "settings.livingGlass"
+
+    /// Always false in Release: the switch lives in the DEBUG-only Lab, and a value left in
+    /// standard defaults by a DEBUG build survives installing a Release build over it.
+    static func livingGlassEnabled(in defaults: UserDefaults = .standard) -> Bool {
+        #if DEBUG
+        defaults.object(forKey: livingGlassKey) as? Bool ?? false
+        #else
+        false
+        #endif
+    }
 }

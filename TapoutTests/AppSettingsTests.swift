@@ -16,4 +16,13 @@ struct AppSettingsTests {
         #expect(Appearance.light.colorScheme == .light)
         #expect(Appearance.dark.colorScheme == .dark)
     }
+
+    @Test func livingGlassIsOffUntilTurnedOn() {
+        let defaults = UserDefaults(suiteName: "AppSettingsTests.livingGlass")!
+        defaults.removePersistentDomain(forName: "AppSettingsTests.livingGlass")
+        defer { defaults.removePersistentDomain(forName: "AppSettingsTests.livingGlass") }
+        #expect(AppSettings.livingGlassEnabled(in: defaults) == false)
+        defaults.set(true, forKey: AppSettings.livingGlassKey)
+        #expect(AppSettings.livingGlassEnabled(in: defaults) == true)
+    }
 }

@@ -19,6 +19,9 @@ struct LabView: View {
                     NavigationLink("Widgets") { SurfaceGallery(model: model) }
                     NavigationLink("Moments") { MomentsGallery(model: model) }
                 }
+                Section("Living glass") {
+                    NavigationLink("Effects") { EffectsGallery() }
+                }
                 logSection
             }
             .navigationTitle("Lab")

@@ -134,6 +134,8 @@ targets:
       - path: Tapout/DesignSystem/FrauncesFace.swift
       - path: Tapout/DesignSystem/Typography.swift
       - path: Tapout/Components/OrbView.swift
+      # OrbView builds its palette from this pure colour table (simd only, no effect code).
+      - path: Tapout/Components/OrbColors.swift
       - path: Tapout/Model/TimeFormat.swift
       - path: Tapout/Model/Insights.swift
     info:

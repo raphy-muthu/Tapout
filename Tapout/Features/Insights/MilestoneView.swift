@@ -123,7 +123,7 @@ struct MilestoneView: View {
                     RippleRing(from: orb)
                         .allowsHitTesting(false)
                 }
-                OrbView(tone: .ember, ring: seal, size: orb)
+                LivingOrb(tone: .ember, ring: seal, size: orb)
                     .opacity(ringsIn ? 1 : 0)
                     .animation(reduceMotion ? nil : .easeOut(duration: 0.35), value: ringsIn)
             }

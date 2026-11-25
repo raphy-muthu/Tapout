@@ -195,7 +195,7 @@ struct EmergencyPassView: View {
             return
         }
         countdown.progress = 1
-        Haptics.unlock()
+        LivingFeedback.unlock()
         dismissTask = Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(800))
             guard !Task.isCancelled else { return }

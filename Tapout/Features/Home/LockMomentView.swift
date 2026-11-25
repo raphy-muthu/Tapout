@@ -15,10 +15,14 @@ struct LockMomentView: View {
     /// Storyboard frame, 1...4.
     @State private var frame = 1
     @State private var ring = 0.0
+    @LivingGlassFlag private var livingGlass
 
     var body: some View {
         VStack(spacing: 0) {
             placePill
+                // Above the glass orb's warmth, which spills past the orb. Only with the switch on, so the
+                // classic shockwave still draws over the pill exactly as before.
+                .zIndex(livingGlass ? 1 : 0)
             VStack(spacing: Space.lg) {
                 orb
                 caption
@@ -46,6 +50,31 @@ struct LockMomentView: View {
     }
 
     private var orb: some View {
+        LivingGlassReader { choice in
+            switch choice {
+            case .classic:
+                classicOrb
+            case .glass:
+                // One orb. The tone change at frame 2 sends the shader ripple that replaces the shockwave,
+                // and `warmth` starts slate and settles ember. The seal ring is ember from the first frame
+                // of its sweep, as in the classic path (at frame 1 it is 0 and draws nothing).
+                ZStack {
+                    if frame == 1 {
+                        ReadyRings().transition(.opacity)
+                    }
+                    LivingOrb(tone: frame == 1 ? .slate : .ember, ringTone: .ember, ring: ring, size: 280,
+                              warmth: frame > 1, changedFrom: .slate)
+                }
+                .frame(width: 280, height: 280)
+                .lockMomentMatch(.orb, inOverlay: true)
+                // This is the lock. Home's orb, appearing ember underneath or after the hand-over, must not
+                // swing from slate a second time.
+                .onAppear { _ = OrbToneMemory.shared.swap(.ember) }
+            }
+        }
+    }
+
+    private var classicOrb: some View {
         ZStack {
             if frame == 1 {
                 ReadyRings().transition(.opacity)
@@ -53,8 +82,8 @@ struct LockMomentView: View {
             if frame >= 3 && !reduceMotion {
                 Shockwave(from: 280)
             }
-            OrbView(tone: .slate, size: 280).opacity(frame == 1 ? 1 : 0)
-            OrbView(tone: .ember, ring: ring, size: 280).opacity(frame == 1 ? 0 : 1)
+            LivingOrb(tone: .slate, size: 280).opacity(frame == 1 ? 1 : 0)
+            LivingOrb(tone: .ember, ring: ring, size: 280).opacity(frame == 1 ? 0 : 1)
         }
         .frame(width: 280, height: 280)
         .lockMomentMatch(.orb, inOverlay: true)
@@ -90,7 +119,8 @@ struct LockMomentView: View {
     }
 
     private func play() async {
-        Haptics.lock() // two rigid taps: now and at 90 ms
+        // Two rigid taps: now and at 90 ms.
+        LivingFeedback.lock()
         if reduceMotion {
             withAnimation(Motion.lockReduced) {
                 frame = 4

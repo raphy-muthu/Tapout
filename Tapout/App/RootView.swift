@@ -341,7 +341,7 @@ struct RootView: View {
     }
 
     private func unlock() {
-        Haptics.unlock()
+        LivingFeedback.unlock()
         withAnimation(reduceMotion ? Motion.unlockReduced : Motion.unlock) { engine.unlock() }
         if let record = model.finishLock(), let intention = record.intention {
             intentionCheck = IntentionCheck(id: record.start, intention: intention)
@@ -433,7 +433,7 @@ struct RootView: View {
     /// Queues a closed timer's Time's up cover and "Did you do it?", with the unlock haptic when `heard`.
     /// A timer that handed over to a schedule opened nothing, so it gets no unlock haptic.
     private func present(_ finish: AppModel.TimerFinish, heard: Bool) {
-        if finish.playsUnlockHaptic(heard: heard) { Haptics.unlock() }
+        if finish.playsUnlockHaptic(heard: heard) { LivingFeedback.unlock() }
         if let record = finish.record, let intention = record.intention {
             pendingTimerCheck = IntentionCheck(id: record.start, intention: intention)
         }
@@ -465,7 +465,7 @@ struct RootView: View {
         while !Task.isCancelled {
             try? await Task.sleep(for: .seconds(1))
             let relocked = withAnimation(reduceMotion ? Motion.lockReduced : Motion.lock) { engine.tick() }
-            if relocked { Haptics.lock() }
+            if relocked { LivingFeedback.lock() }
             // The timer ran out while Tapout was open.
             if engine.timerJustFinished != nil { closeFinishedTimer(heard: true) }
         }

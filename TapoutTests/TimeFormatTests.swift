@@ -81,4 +81,14 @@ struct TimerLengthFormatTests {
         #expect(TimerSheet.snapped(45 * 60 + 20) == 45 * 60)
         #expect(TimerSheet.snapped(45 * 60 + 40) == 46 * 60)
     }
+
+    @Test func theDialCoversEveryPresetAndLongerGoesPastIt() {
+        for preset in TimerSheet.presets {
+            #expect(Int(preset / 60) >= DialMath.minimum && Int(preset / 60) <= DialMath.maximum)
+            #expect(Int(preset / 60) % DialMath.step == 0)
+        }
+        #expect(TimerSheet.longerDuration > TimeInterval(DialMath.maximum * 60))
+        #expect((TimerLock.minimum...TimerLock.maximum).contains(TimerSheet.longerDuration))
+        #expect(TimeInterval(DialMath.minimum * 60) == TimerLock.minimum)
+    }
 }

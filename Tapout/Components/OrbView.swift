@@ -23,7 +23,7 @@ struct OrbView: View {
             glow(palette)
             glassBody(palette, sphere: sphere)
             gloss(sphere: sphere)
-            sealRing
+            OrbSealRing(tone: ringTone ?? tone, ring: ring, size: size)
         }
         .frame(width: size, height: size)
         .accessibilityElement(children: .ignore)
@@ -85,12 +85,33 @@ struct OrbView: View {
         .allowsHitTesting(false)
     }
 
-    /// Always in the tree (an empty trim draws nothing) so the ring can sweep in when animated.
-    private var sealRing: some View {
+    private var label: String {
+        switch tone {
+        case .ember: ring >= 1 ? "Sealed ember orb" : "Ember orb"
+        case .slate: "Slate orb"
+        }
+    }
+}
+
+/// The seal ring drawn around an orb. Always in the tree (an empty trim draws nothing)
+/// so the ring can sweep in when animated.
+struct OrbSealRing: View {
+    var tone: OrbTone
+    /// How much of the ring is drawn, 0...1.
+    var ring: Double
+    var size: CGFloat
+
+    init(tone: OrbTone, ring: Double, size: CGFloat) {
+        self.tone = tone
+        self.ring = ring
+        self.size = size
+    }
+
+    var body: some View {
         let progress = min(max(ring, 0), 1)
         let stroke = max(2.5, size * 0.016)
-        let ember = (ringTone ?? tone) == .ember
-        return ZStack {
+        let ember = tone == .ember
+        ZStack {
             Circle()
                 .stroke(Color.track, lineWidth: stroke)
                 .opacity(progress > 0 && progress < 1 ? 1 : 0)
@@ -103,13 +124,6 @@ struct OrbView: View {
         .frame(width: size - stroke * 3, height: size - stroke * 3)
         .shadow(color: (ember ? Color.ember : Color.slate).opacity(0.7), radius: size * 0.025)
         .allowsHitTesting(false)
-    }
-
-    private var label: String {
-        switch tone {
-        case .ember: ring >= 1 ? "Sealed ember orb" : "Ember orb"
-        case .slate: "Slate orb"
-        }
     }
 }
 
@@ -130,38 +144,28 @@ private struct EllipseHighlight: View {
     }
 }
 
-/// Orb-only gradient stops from Orb.dc.html. Not design tokens: nothing else uses them.
+/// The orb's gradient stops as SwiftUI colours, built from the shared `OrbColors` table.
 private struct OrbPalette {
     let hi, mid, deep, edge, glow, dropShadow: Color
     let glowAlpha: Double
 
     init(tone: OrbTone, light: Bool) {
-        switch tone {
-        case .ember:
-            hi = Color(rgb: 0xFFE3C4)
-            mid = Color(rgb: 0xFF9F43)
-            deep = Color(rgb: 0xC0600F)
-            edge = Color(rgb: light ? 0x8A3F06 : 0x3D1702)
-            glow = .ember
-            glowAlpha = light ? 0.42 : 0.5
-        case .slate:
-            hi = Color(rgb: 0xEEF1F6)
-            mid = Color(rgb: 0x9AA3B4)
-            deep = Color(rgb: 0x555E70)
-            edge = Color(rgb: light ? 0x4A5263 : 0x141820)
-            glow = .slate
-            glowAlpha = light ? 0.32 : 0.34
-        }
-        dropShadow = light ? Color(rgb: 0x15171B).opacity(0.18) : .black.opacity(0.5)
+        let colors = tone == .ember ? OrbColors.ember(light: light) : OrbColors.slate(light: light)
+        hi = Color(colors.hi)
+        mid = Color(colors.mid)
+        deep = Color(colors.deep)
+        edge = Color(colors.edge)
+        glow = Color(colors.glow)
+        glowAlpha = Double(colors.glowAlpha)
+        dropShadow = light
+            ? Color(.sRGB, red: 0x15 / 255, green: 0x17 / 255, blue: 0x1B / 255).opacity(0.18)
+            : .black.opacity(0.5)
     }
 }
 
 private extension Color {
-    init(rgb: UInt32) {
-        self.init(.sRGB,
-                  red: Double((rgb >> 16) & 0xFF) / 255,
-                  green: Double((rgb >> 8) & 0xFF) / 255,
-                  blue: Double(rgb & 0xFF) / 255)
+    init(_ rgb: SIMD3<Float>) {
+        self.init(.sRGB, red: Double(rgb.x), green: Double(rgb.y), blue: Double(rgb.z))
     }
 }
 

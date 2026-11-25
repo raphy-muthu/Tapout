@@ -145,3 +145,35 @@ Needs a mode with apps chosen. Allow notifications when asked. The first three a
 - [ ] **Timer ends outside every window.** Start a timer that ends when no mode's scheduled window is running: the apps open as usual, with "Time's up", "<length> locked. Your apps are open." and the unlock haptic (or the "Time's up" notification with Tapout closed). (8)
 - [ ] **Notifications denied.** With notifications off, the timer still ends on time; only the notice is missing. (8)
 - [ ] **Wheel and sheet.** The wheel stops at 5 minutes and 12 hours. Chips move the wheel. The sheet is usable in light mode and at the largest text size. (8)
+
+## 13. Phase 9: living glass
+
+The Metal Toolchain is installed and the shader is in the build (Lab, Effects, Glass shader reads "In this build"). The glass orb has been seen on the simulator only; everything below needs the iPhone.
+
+- [ ] **Flag on.** Lab, Effects: switch "Living glass in the app" on. Home's orb is the glass one and looks like the same orb, only livelier. (9)
+- [ ] **Tilt.** Tilt the phone: the highlight moves smoothly with it, with no jitter, and settles when you hold still. (9)
+- [ ] **Ripple on lock and unlock.** Lock and unlock: a ripple travels out from the orb each time Home shows the new state. (9)
+- [ ] **Lock moment.** With the flag on: two taps, then a soft swell, with the same sequence and no dropped frames. (9)
+- [ ] **Haptic patterns.** Lab, Effects, Haptics: lock, unlock, detent, scrub and paired each feel distinct and right. Note any that do not. (9)
+- [ ] **Haptics after backgrounding.** Play a haptic, send Tapout to the background for a few seconds, return and play another: nothing crashes and the haptic still plays. (9)
+- [ ] **Reduce Motion.** Settings, Accessibility, Reduce Motion on: Home shows the classic orb. Turn it off: the glass orb returns. (9)
+- [ ] **Low Power Mode.** Low Power Mode on: classic orb. Off: glass again. (9)
+- [ ] **Light appearance.** In light appearance, the glass orb matches the classic one's colors in both modes. (9)
+- [ ] **Largest Dynamic Type.** At the largest Dynamic Type, the orb shrinks as before and nothing overlaps. (9)
+- [ ] **Battery and heat.** Leave Home open on a charger-free phone for 30 minutes with the flag on, then off for 30 minutes: note the battery drop for each and whether the phone gets warm. (9)
+- [ ] **Flag off.** Switch the flag off: every screen is exactly as before. (9)
+
+## 14. Phase 10: Home and the lock moment
+
+Turn the Living glass switch on (Lab, Effects) for all of these. Seen on the simulator only so far.
+
+- [ ] **Timer dial.** Open Timer: a dial, not the wheel. Drag clockwise: one detent per 5 minutes, the outer ring fills. Keep going past 12 o'clock: the inner ring starts filling, up to 2 h, then it stops. Drag back: it unwinds. (10)
+- [ ] **Dial precision.** Set exactly 25 min and 1 h 35 min without fighting it. (10)
+- [ ] **Dial versus the sheet.** Drag the dial downward on its lower half: the value changes and the sheet neither moves nor dismisses. (10)
+- [ ] **Longer.** Tap Longer: the wheel appears at 3 h and reaches 12 h. Start works. (10)
+- [ ] **Wheel at large text and with VoiceOver.** At an accessibility text size, and separately with VoiceOver on, the sheet shows the wheel. (10)
+- [ ] **Lock moment.** Scan a tag: one orb turns from slate to ember while the ring sweeps, one ripple goes out, the background warms. Two taps, then a soft swell. (10)
+- [ ] **Unlock haptic.** Unlock with a tag: one soft tap and a fainter echo. (10)
+- [ ] **Warmth.** On Home, locked and unlocked, the glow behind the orb is soft and wider than the orb, never a screen-wide wash, in a dark room and in daylight. (10)
+- [ ] **Time's up and milestone.** Both show the glass orb; Time's up warms in. (10)
+- [ ] **Switch off.** The wheel, the classic lock moment and today's haptics are back. (10)

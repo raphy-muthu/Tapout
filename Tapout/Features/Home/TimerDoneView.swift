@@ -55,7 +55,10 @@ struct TimerDoneView: View {
 
     private func moment(orb: CGFloat) -> some View {
         VStack(spacing: Space.xl) {
-            OrbView(tone: handedOverTo == nil ? .slate : .ember, ringTone: .ember, ring: 1, size: orb)
+            // Without a hand-over the timer's end is an unlock: the cover knows it, so it cools from ember and
+            // ripples even though Home, unlocking underneath, already showed slate. With one, nothing changed.
+            LivingOrb(tone: handedOverTo == nil ? .slate : .ember, ringTone: .ember, ring: 1, size: orb,
+                      ripplesOnAppear: true, warmth: true, changedFrom: handedOverTo == nil ? .ember : nil)
                 .scaleEffect(shown || reduceMotion ? 1 : 0.94)
                 .accessibilityHidden(true)
             VStack(spacing: Space.xs) {

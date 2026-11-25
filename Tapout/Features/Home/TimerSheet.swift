@@ -15,6 +15,19 @@ struct TimerSheet: View {
     /// 15 min, 30 min, 45 min, 1 h, 2 h.
     nonisolated static let presets: [TimeInterval] = [15 * 60, 30 * 60, 45 * 60, 3600, 2 * 3600]
     nonisolated static let initialDuration: TimeInterval = 45 * 60
+    /// Where the Longer chip puts the wheel: past the dial's 2 h.
+    nonisolated static let longerDuration: TimeInterval = 3 * 3600
+
+    /// The dial or the wheel. The dial is an input, not a motion effect, so Reduce Motion, Low Power Mode,
+    /// heat or a missing shader never swap it for the wheel; only these do.
+    nonisolated static func showsDial(livingGlass: Bool, accessibilitySize: Bool, voiceOver: Bool, longer: Bool) -> Bool {
+        livingGlass && !accessibilitySize && !voiceOver && !longer
+    }
+
+    /// A duration put on the dial's grid: 5-minute steps from 5 min to 2 h.
+    nonisolated static func dialDuration(_ duration: TimeInterval) -> TimeInterval {
+        TimeInterval(DialMath.snapped(duration / 60) * 60)
+    }
 
     /// A wheel value rounded to the minute and kept within `TimerLock.minimum...maximum`.
     nonisolated static func snapped(_ duration: TimeInterval) -> TimeInterval {
@@ -29,25 +42,51 @@ struct TimerSheet: View {
     /// Start went through; further taps while the sheet slides away are ignored.
     @State private var started = false
     @State private var detent = PresentationDetent.large
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverOn
+    /// Longer was tapped: the wheel for the rest of the sheet's life, even with living glass on.
+    @State private var longer = false
+    /// The Lab's switch, observed so the sheet follows it. Always false in Release.
+    @LivingGlassFlag private var livingGlass
+
+    private var dial: Bool {
+        Self.showsDial(livingGlass: livingGlass, accessibilitySize: typeSize.isAccessibilitySize,
+                       voiceOver: voiceOverOn, longer: longer)
+    }
 
     var body: some View {
         ScrollView {
             VStack(spacing: Space.lg) {
-                VStack(spacing: Space.xs) {
-                    Text(TimeFormat.length(duration))
-                        .font(.numberDisplay)
-                        .foregroundStyle(Color.ink)
-                        .multilineTextAlignment(.center)
-                        .accessibilityLabel(TimeFormat.spokenLength(duration))
-                        .contentTransition(.numericText())
-                    CountdownWheel(duration: $duration)
-                        .frame(height: 216)
-                        .accessibilityLabel("Duration")
+                if dial {
+                    TimerDial(minutes: dialMinutes)
+                        .frame(maxWidth: .infinity)
+                        // Entering dial mode from the wheel (VoiceOver off, a smaller text size) can bring
+                        // any minute; put it on the dial's grid.
+                        .onAppear { duration = Self.dialDuration(duration) }
+                } else {
+                    VStack(spacing: Space.xs) {
+                        Text(TimeFormat.length(duration))
+                            .font(.numberDisplay)
+                            .foregroundStyle(Color.ink)
+                            .multilineTextAlignment(.center)
+                            .accessibilityLabel(TimeFormat.spokenLength(duration))
+                            .contentTransition(.numericText())
+                        CountdownWheel(duration: $duration)
+                            .frame(height: 216)
+                            .accessibilityLabel("Duration")
+                    }
                 }
                 FlowLayout {
                     ForEach(Self.presets, id: \.self) { preset in
                         ChoiceChip(title: TimeFormat.length(preset), isOn: duration == preset) {
                             duration = preset
+                            failed = false
+                        }
+                    }
+                    if dial {
+                        // The dial stops at 2 h; Longer hands the rest of the sheet to the wheel.
+                        ChoiceChip(title: "Longer", isOn: false) {
+                            longer = true
+                            duration = Self.longerDuration
                             failed = false
                         }
                     }
@@ -80,6 +119,12 @@ struct TimerSheet: View {
             if locked { dismiss() }
         }
         .onChange(of: duration) { _, _ in failed = false }
+    }
+
+    /// The dial works in whole minutes; the sheet keeps seconds.
+    private var dialMinutes: Binding<Int> {
+        Binding(get: { Int((duration / 60).rounded()) },
+                set: { duration = TimeInterval($0 * 60) })
     }
 
     private var notes: some View {
