@@ -30,6 +30,17 @@ struct RecapImageTests {
         #expect(image.size.height * image.scale == 1920)
     }
 
+    @Test func glassBarsChangeTheImageAndKeepTheSize() throws {
+        let sample = LockSnapshot.sample(.unlocked)
+        let classic = RecapView(weekStart: .now, total: sample.weekTotal, days: sample.days, comparison: nil)
+        var glass = classic
+        glass.glass = true
+        let image = try #require(RecapImage.render(glass, colorScheme: .dark))
+        #expect(image.size.width * image.scale == 1080)
+        #expect(image.size.height * image.scale == 1920)
+        #expect(image.pngData() != RecapImage.render(classic, colorScheme: .dark)?.pngData())
+    }
+
     @Test func shareItemExportsAFullSizePNG() async throws {
         let sample = LockSnapshot.sample(.unlocked)
         let share = RecapShare(weekStart: .now, total: sample.weekTotal, days: sample.days,

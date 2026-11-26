@@ -9,12 +9,13 @@ import os
 enum LiveActivityController {
     private static let logger = Logger(subsystem: "com.raphymuthu.tapout", category: "liveActivity")
 
-    static func sync(_ snapshot: LockSnapshot, enabled: Bool) {
+    static func sync(_ snapshot: LockSnapshot, enabled: Bool, flat: Bool = false) {
         let all = Activity<LockActivityAttributes>.activities
         let activities = all.filter { LiveActivityPlan.countsAsCurrent($0.activityState.phase) }
         let finished = all.filter { !LiveActivityPlan.countsAsCurrent($0.activityState.phase) }
         let allowed = enabled && ActivityAuthorizationInfo().areActivitiesEnabled
-        let action = LiveActivityPlan.decide(snapshot: snapshot, enabled: allowed, current: activities.first?.content.state)
+        let action = LiveActivityPlan.decide(snapshot: snapshot, enabled: allowed, current: activities.first?.content.state,
+                                             flat: flat)
         let extras = Array(activities.dropFirst()) + finished
         switch action {
         case .none:

@@ -5,7 +5,7 @@ import WidgetKit
 struct StatusWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "tapout.status", provider: SnapshotProvider()) { entry in
-            StatusFamilyView(snapshot: entry.snapshot, date: entry.date)
+            StatusFamilyView(snapshot: entry.snapshot, date: entry.date, flat: entry.flat)
         }
         .configurationDisplayName("Tapout")
         .description("Locked, or phone-free today.")
@@ -16,17 +16,23 @@ struct StatusWidget: Widget {
 private struct StatusFamilyView: View {
     let snapshot: LockSnapshot
     let date: Date
+    let flat: Bool
     @Environment(\.widgetFamily) private var family
     @Environment(\.widgetRenderingMode) private var renderingMode
 
     var body: some View {
         switch family {
         case .accessoryCircular:
-            CircularFace(snapshot: snapshot, date: date).containerBackground(.clear, for: .widget)
+            CircularFace(snapshot: snapshot, date: date, bold: flat).containerBackground(.clear, for: .widget)
         case .accessoryRectangular:
-            RectangularFace(snapshot: snapshot, date: date).containerBackground(.clear, for: .widget)
+            RectangularFace(snapshot: snapshot, date: date, bold: flat).containerBackground(.clear, for: .widget)
         default:
-            SmallFace(snapshot: snapshot, date: date, tinted: renderingMode != .fullColor).containerBackground(Color.surface1, for: .widget)
+            if flat {
+                FlatSmallFace(snapshot: snapshot, date: date)
+                    .containerBackground(FlatPoster.home(snapshot, date: date).tone.field, for: .widget)
+            } else {
+                SmallFace(snapshot: snapshot, date: date, tinted: renderingMode != .fullColor).containerBackground(Color.surface1, for: .widget)
+            }
         }
     }
 }
@@ -34,11 +40,17 @@ private struct StatusFamilyView: View {
 private struct WeekFamilyView: View {
     let snapshot: LockSnapshot
     let date: Date
+    let flat: Bool
     @Environment(\.widgetRenderingMode) private var renderingMode
 
     var body: some View {
-        MediumFace(snapshot: snapshot, date: date, tinted: renderingMode != .fullColor)
-            .containerBackground(Color.surface1, for: .widget)
+        if flat {
+            FlatMediumFace(snapshot: snapshot, date: date)
+                .containerBackground(FlatPoster.home(snapshot, date: date).tone.field, for: .widget)
+        } else {
+            MediumFace(snapshot: snapshot, date: date, tinted: renderingMode != .fullColor)
+                .containerBackground(Color.surface1, for: .widget)
+        }
     }
 }
 
@@ -46,7 +58,7 @@ private struct WeekFamilyView: View {
 struct WeekWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "tapout.week", provider: SnapshotProvider()) { entry in
-            WeekFamilyView(snapshot: entry.snapshot, date: entry.date)
+            WeekFamilyView(snapshot: entry.snapshot, date: entry.date, flat: entry.flat)
         }
         .configurationDisplayName("This week")
         .description("Phone-free time this week.")

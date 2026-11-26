@@ -43,10 +43,10 @@ struct RejectedView: View {
             }
             Spacer(minLength: 0)
             if typeSize.isAccessibilitySize {
-                // A smaller orb at accessibility sizes so the words fit whole; scrolls if even that is too tall.
+                // A much smaller orb at accessibility sizes so the words fit whole; scrolls if even that is too tall.
                 ViewThatFits(in: .vertical) {
-                    moment(scale: 0.5)
-                    ScrollView { moment(scale: 0.5) }.scrollIndicators(.hidden)
+                    moment(scale: 0.34)
+                    ScrollView { moment(scale: 0.34) }.scrollIndicators(.hidden)
                 }
             } else {
                 moment(scale: 1)
@@ -70,6 +70,8 @@ struct RejectedView: View {
                     }
                 }
             }
+            // Keeps very large words off the button.
+            .padding(.top, typeSize.isAccessibilitySize ? Space.xs : 0)
         }
         .padding(.horizontal, Space.lg)
         .padding(.top, Space.xs)

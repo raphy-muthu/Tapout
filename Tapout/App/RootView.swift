@@ -60,10 +60,18 @@ struct RootView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.legibilityWeight) private var legibilityWeight
     @Environment(\.scenePhase) private var scenePhase
+    /// The Lab's switch (always off in Release): glass controls and the living background.
+    @LivingGlassFlag private var livingGlass
 
     init(engine: LockEngine, model: AppModel) {
         _engine = State(initialValue: engine)
         _model = State(initialValue: model)
+    }
+
+    /// The page color, and with the switch on the breathing glow: full behind Home, softer behind the other tabs.
+    private var backdrop: some View {
+        GlassPageBackground(tone: engine.session.lockState == .locked ? .ember : .slate, isOn: livingGlass,
+                            strength: tab == .home ? 1 : BackdropPlan.readingStrength)
     }
 
     var body: some View {
@@ -73,7 +81,7 @@ struct RootView: View {
                 screen
                     .safeAreaInset(edge: .bottom, spacing: Space.md) {
                         // Tucked away while typing, so the intention field and Scan fit above the keyboard on small iPhones.
-                        if !keyboardUp { FloatingTabBar(active: $tab) }
+                        if !keyboardUp { FloatingTabBar(active: $tab).environment(\.glassControls, livingGlass) }
                     }
                 if showingLockMoment {
                     LockMomentView(placeName: lockPlaceName, session: engine.session, intention: model.currentIntention) {
@@ -83,7 +91,7 @@ struct RootView: View {
                     .zIndex(1)
                 }
             }
-            .background(Color.bg.ignoresSafeArea())
+            .background { backdrop.ignoresSafeArea() }
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: Route.self) { route in
                 switch route {
@@ -135,6 +143,7 @@ struct RootView: View {
             showTimerDone()
         }) {
             PairPlaceSheet(model: model)
+                .environment(\.glassControls, livingGlass)
         }
         .sheet(isPresented: $showingTimer, onDismiss: {
             if timerStarted {
@@ -153,6 +162,7 @@ struct RootView: View {
         .background {
             Color.clear.fullScreenCover(isPresented: Binding(get: { !hasOnboarded }, set: { _ in })) {
                 OnboardingView(model: model) { hasOnboarded = true }
+                    .environment(\.glassControls, livingGlass)
             }
         }
         // Its own host too, for the same reason. It needs onboarding done, so the two never overlap.
@@ -187,6 +197,7 @@ struct RootView: View {
             refreshSurfaces()
         }
         .onChange(of: liveActivity) { _, _ in refreshSurfaces() }
+        .onChange(of: livingGlass) { _, _ in refreshSurfaces() }
         .onChange(of: model.activeMode.name) { _, _ in refreshSurfaces() }
         .onChange(of: model.places.map(\.name)) { _, _ in refreshSurfaces() }
         // The foreground read of the status can be stale, so a revoke is also caught as it publishes.
@@ -230,10 +241,12 @@ struct RootView: View {
         }
     }
 
-    /// Widgets and the Live Activity read the store; tell them it changed.
+    /// Widgets and the Live Activity read the store; tell them it changed. The Lab's switch goes to the App Group
+    /// first, for them and the shield.
     private func refreshSurfaces() {
+        LivingGlassMirror.set(livingGlass)
         WidgetCenter.shared.reloadAllTimelines()
-        LiveActivityController.sync(model.lockSnapshot(at: .now), enabled: liveActivity)
+        LiveActivityController.sync(model.lockSnapshot(at: .now), enabled: liveActivity, flat: livingGlass)
     }
 
     @ViewBuilder
@@ -249,12 +262,16 @@ struct RootView: View {
                 onEmergencyPass: { if !scanning { cover = .emergencyPass } },
                 onOpenSettings: openSettings
             )
+            .environment(\.glassControls, livingGlass)
         case .modes:
             ModesView(model: model)
+                .environment(\.glassControls, livingGlass)
         case .places:
             PlacesView(model: model)
+                .environment(\.glassControls, livingGlass)
         case .insights:
             InsightsView(model: model)
+                .environment(\.glassControls, livingGlass)
         }
     }
 

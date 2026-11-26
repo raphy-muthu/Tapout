@@ -81,6 +81,22 @@ extension DemoData {
         store.session = .locked(since: start)
     }
 
+    /// Adds four uneven earlier weeks (a few days off) under the demo week, so the heatmap and the
+    /// streak have something to show.
+    static func seedMonth(_ store: SharedStore, now: Date = .now, calendar: Calendar = .current) {
+        let mode = store.activeModeID ?? UUID()
+        let minutes = [35, 140, 80, 200, 55, 110, 25]
+        let earlier: [LockRecord] = (7..<31).reversed().compactMap { day in
+            guard day % 9 != 4,
+                  let midnight = calendar.date(byAdding: .day, value: -day, to: calendar.startOfDay(for: now))
+            else { return nil }
+            let start = midnight.addingTimeInterval(10 * 3600)
+            return LockRecord(start: start, end: start + Double(minutes[(day * 3) % minutes.count]) * 60,
+                              placeUID: kitchen, modeID: mode)
+        }
+        store.lockHistory = earlier + store.lockHistory
+    }
+
     /// A 45-minute timer that ended a minute ago while Tapout was closed, as the monitor leaves it:
     /// unlocked, the timer in `finishedTimer`, and its record still open with an intention.
     /// `handedOver`: it ended inside a scheduled window, so the session stays locked under that mode
@@ -117,11 +133,13 @@ extension DemoData {
 extension AppModel {
     /// Launch arguments for screenshots and testing:
     /// `-demoData` replaces the App Group's modes, places, history and passes with `DemoData` and skips onboarding;
+    /// `-demoMonth` (with `-demoData`) adds four earlier weeks of locks;
     /// `-skipOnboarding` skips it without sample data; `-resetOnboarding` shows it again;
     /// `-resetMilestones` lets milestones show again.
     static func fromLaunchArguments(_ arguments: [String] = ProcessInfo.processInfo.arguments) -> AppModel {
         let store = SharedStore.appGroup()
         if arguments.contains("-demoData") { DemoData.seed(store) }
+        if arguments.contains("-demoData") && arguments.contains("-demoMonth") { DemoData.seedMonth(store) }
         if arguments.contains("-demoData") || arguments.contains("-skipOnboarding") {
             UserDefaults.standard.set(true, forKey: AppSettings.onboardedKey)
         }

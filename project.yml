@@ -105,6 +105,8 @@ targets:
     sources:
       - path: TapoutShield
       - path: Tapout/DesignSystem/Colors.xcassets
+      # The one shared file the shield needs: whether the Lab's Living glass switch is on.
+      - path: Shared/LivingGlassMirror.swift
     info:
       path: TapoutShield/Info.plist
       properties:
@@ -116,6 +118,8 @@ targets:
       path: TapoutShield/TapoutShield.entitlements
       properties:
         com.apple.developer.family-controls: true
+        com.apple.security.application-groups:
+          - group.com.raphymuthu.tapout
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.raphymuthu.tapout.shield

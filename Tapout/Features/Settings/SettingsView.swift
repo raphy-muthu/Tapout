@@ -61,16 +61,18 @@ struct SettingsView: View {
     }
 
     private var passesCard: some View {
-        HStack {
+        // At accessibility sizes the count goes under the title, so the words keep the full width.
+        (typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: Space.xs))
+                                      : AnyLayout(HStackLayout())) {
             VStack(alignment: .leading, spacing: Space.xs) {
                 Text("Emergency passes").font(.tHeadline).foregroundStyle(Color.ink)
                 PassPips(left: passesLeft)
             }
-            Spacer()
+            .frame(maxWidth: .infinity, alignment: .leading)
             HStack(alignment: .firstTextBaseline, spacing: 0) {
                 Text("\(passesLeft)").font(.numberMedium).foregroundStyle(Color.ink)
                 Text("/\(SharedStore.totalPasses)")
-                    .font(.system(size: 17))
+                    .font(.tBody)
                     .foregroundStyle(Color.inkTertiary)
             }
             .accessibilityHidden(true)
@@ -136,6 +138,7 @@ struct SettingsView: View {
                 .tint(Color.slate)
                 .opacity(isLocked ? 0.45 : 1)
         }
+        .padding(.vertical, Space.xs) // keeps rows apart when the label is very large
         .frame(minHeight: 56)
     }
 

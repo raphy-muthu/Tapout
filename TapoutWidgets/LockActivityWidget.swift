@@ -5,23 +5,33 @@ import WidgetKit
 struct LockActivityWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: LockActivityAttributes.self) { context in
-            LockScreenCard(state: context.state, isStale: context.isStale)
-                .activityBackgroundTint(Color.surface1)
-                .activitySystemActionForegroundColor(Color.ink)
+            if context.state.flat == true {
+                let tone = FlatPoster.activity(context.state, isStale: context.isStale).tone
+                FlatLockScreenCard(state: context.state, isStale: context.isStale)
+                    .activityBackgroundTint(tone.field)
+                    .activitySystemActionForegroundColor(tone.onField)
+            } else {
+                LockScreenCard(state: context.state, isStale: context.isStale)
+                    .activityBackgroundTint(Color.surface1)
+                    .activitySystemActionForegroundColor(Color.ink)
+            }
         } dynamicIsland: { context in
-            DynamicIsland {
+            let flat = context.state.flat == true
+            return DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    IslandOrb(state: context.state, isStale: context.isStale, size: 64)
+                    if !flat { IslandOrb(state: context.state, isStale: context.isStale, size: 64) }
                 }
                 DynamicIslandExpandedRegion(.center) {
-                    IslandTitle(state: context.state, isStale: context.isStale)
+                    if !flat { IslandTitle(state: context.state, isStale: context.isStale) }
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    IslandTimer(state: context.state, isStale: context.isStale)
+                    if !flat { IslandTimer(state: context.state, isStale: context.isStale) }
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    // Nothing to unlock once a timer has ended.
-                    if !context.state.timerIsOver(isStale: context.isStale) {
+                    if flat {
+                        FlatIslandBlock(state: context.state, isStale: context.isStale)
+                    } else if !context.state.timerIsOver(isStale: context.isStale) {
+                        // Nothing to unlock once a timer has ended.
                         Label("Tap a tag to unlock", systemImage: "wave.3.right")
                             .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(Color.emberInk)
@@ -29,13 +39,27 @@ struct LockActivityWidget: Widget {
                     }
                 }
             } compactLeading: {
-                IslandOrb(state: context.state, isStale: context.isStale, size: 26)
+                IslandMark(state: context.state, isStale: context.isStale)
             } compactTrailing: {
                 IslandTimer(state: context.state, isStale: context.isStale, compact: true)
             } minimal: {
-                IslandOrb(state: context.state, isStale: context.isStale, size: 26)
+                IslandMark(state: context.state, isStale: context.isStale)
             }
-            .keylineTint(Color.ember)
+            .keylineTint(flat ? FlatPoster.activity(context.state, isStale: context.isStale).tone.field : Color.ember)
+        }
+    }
+}
+
+/// The compact island's mark: the flat disc or the orb.
+private struct IslandMark: View {
+    let state: LockActivityAttributes.ContentState
+    let isStale: Bool
+
+    var body: some View {
+        if state.flat == true {
+            FlatIslandDot(state: state, isStale: isStale)
+        } else {
+            IslandOrb(state: state, isStale: isStale, size: 26)
         }
     }
 }

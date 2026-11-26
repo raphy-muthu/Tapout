@@ -1,43 +1,34 @@
 import FamilyControls
 import SwiftUI
 
-/// Step 1, from design/screens/Main.dc.html.
+/// Step 1, from design/screens/Main.dc.html. With the glass switch on, onboarding draws the orb above it.
 struct WelcomeStep: View {
+    @Environment(\.glassControls) private var glass
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     var body: some View {
-        VStack(spacing: Space.xxl) {
-            OrbView(tone: .slate, size: 300)
+        let large = typeSize.isAccessibilitySize
+        VStack(spacing: large ? Space.lg : Space.xxl) {
+            // Smaller at accessibility sizes, so the words fit without scrolling.
+            if !glass { OrbView(tone: .slate, size: large ? 160 : 300) }
             VStack(spacing: Space.xs) {
                 Text("Tap to lock.").font(.tLargeTitle).foregroundStyle(Color.ink)
                 Text("Tap again to get your phone back.").font(.tBody).foregroundStyle(Color.inkSecondary)
             }
             .multilineTextAlignment(.center)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: glass ? .top : .center)
     }
 }
 
-/// Step 2.
+/// Step 2. With the glass switch on, the hourglass is on onboarding's orb instead of this tile.
 struct ScreenTimeStep: View {
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.glassControls) private var glass
 
     var body: some View {
-        VStack(spacing: Space.xxl) {
-            ZStack(alignment: .bottomTrailing) {
-                Image(systemName: "hourglass")
-                    .font(.system(size: 72, weight: .ultraLight))
-                    .foregroundStyle(Color.ink)
-                    .frame(width: 200, height: 200)
-                    .background(Color.surface1, in: RoundedRectangle(cornerRadius: 56, style: .continuous))
-                    .cardShadow()
-                Image(systemName: "lock")
-                    .font(.system(size: 26, weight: .semibold))
-                    .foregroundStyle(Color.onEmber)
-                    .frame(width: 64, height: 64)
-                    .background(Color.ember, in: Circle())
-                    .background(Circle().fill(Color.bg).padding(-6))
-                    .offset(x: 10, y: 10)
-            }
-            .accessibilityHidden(true)
+        VStack(spacing: typeSize.isAccessibilitySize ? Space.lg : Space.xxl) {
+            if !glass { artwork.shrunk(typeSize.isAccessibilitySize ? 0.6 : 1, from: 200) }
             VStack(spacing: Space.xs) {
                 Text("Allow Screen Time").font(.tLargeTitle).foregroundStyle(Color.ink)
                 Text("Tapout uses it to block apps on this iPhone.")
@@ -47,7 +38,26 @@ struct ScreenTimeStep: View {
             }
             .multilineTextAlignment(.center)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: glass ? .top : .center)
+    }
+
+    private var artwork: some View {
+        ZStack(alignment: .bottomTrailing) {
+            Image(systemName: "hourglass")
+                .font(.system(size: 72, weight: .ultraLight))
+                .foregroundStyle(Color.ink)
+                .frame(width: 200, height: 200)
+                .background(Color.surface1, in: RoundedRectangle(cornerRadius: 56, style: .continuous))
+                .cardShadow()
+            Image(systemName: "lock")
+                .font(.system(size: 26, weight: .semibold))
+                .foregroundStyle(Color.onEmber)
+                .frame(width: 64, height: 64)
+                .background(Color.ember, in: Circle())
+                .background(Circle().fill(Color.bg).padding(-6))
+                .offset(x: 10, y: 10)
+        }
+        .accessibilityHidden(true)
     }
 }
 
@@ -58,6 +68,9 @@ struct AppsStep: View {
     let onPickApps: () -> Void
     let onPickAllowed: () -> Void
 
+    @Environment(\.glassControls) private var glass
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Space.lg) {
@@ -65,7 +78,9 @@ struct AppsStep: View {
                 blockCard
                 allowedCard
             }
+            .padding(.horizontal, ShadowRoom.width(glass))
         }
+        .padding(.horizontal, -ShadowRoom.width(glass))
         .scrollIndicators(.hidden)
     }
 
@@ -75,9 +90,11 @@ struct AppsStep: View {
 
     private var blockCard: some View {
         VStack(alignment: .leading, spacing: 20) {
-            HStack(alignment: .firstTextBaseline) {
+            // The count goes under the label at accessibility sizes, so "0 apps" stays on one line.
+            (typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: Space.xxs))
+                                          : AnyLayout(HStackLayout(alignment: .firstTextBaseline))) {
                 SectionLabel(text: "Block", color: .emberInk)
-                Spacer()
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 Text("\(blockedCount)")
                     .font(.numberMedium)
                     .foregroundStyle(Color.ink)
@@ -185,6 +202,7 @@ struct FocusTimeStep: View {
                 if typeSize.isAccessibilitySize {
                     VStack(alignment: .leading, spacing: Space.xxs) {
                         Text(option.title).font(.tHeadline).foregroundStyle(Color.ink)
+                            .lineLimit(1).minimumScaleFactor(0.7) // "Afternoons" must not break mid-word
                         range(option)
                     }
                     .padding(.vertical, Space.sm)
@@ -209,6 +227,7 @@ struct FocusTimeStep: View {
         Text(ScheduleFormat.range(ModeSchedule(days: [], start: option.start, end: option.end)))
             .font(.numberSmall)
             .foregroundStyle(Color.inkSecondary)
+            .fixedSize(horizontal: false, vertical: true) // wraps rather than truncating at large sizes
     }
 }
 
@@ -240,31 +259,46 @@ struct InterestsStep: View {
     }
 }
 
-/// Step 6: the first tag.
+/// Step 6: the first tag. With the glass switch on, onboarding's orb replaces the rings.
 struct PairStep: View {
+    /// The place just paired, while onboarding's orb seals.
+    var pairedName: String? = nil
+
+    @Environment(\.glassControls) private var glass
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     var body: some View {
-        VStack(spacing: Space.xl) {
-            ZStack {
-                Circle().strokeBorder(Color.slateLine, lineWidth: 2).opacity(0.6).frame(width: 216, height: 216)
-                Circle().fill(Color.slateGlow).frame(width: 164, height: 164).blur(radius: 20)
-                Circle().fill(Color.surface2).frame(width: 168, height: 168)
-                Image(systemName: "wave.3.right")
-                    .font(.system(size: 48, weight: .light))
-                    .foregroundStyle(Color.ink)
-            }
-            .frame(width: 220, height: 220)
-            .accessibilityHidden(true)
+        VStack(spacing: typeSize.isAccessibilitySize ? Space.md : Space.xl) {
+            if !glass { artwork.shrunk(typeSize.isAccessibilitySize ? 0.55 : 1, from: 220) }
             VStack(spacing: Space.xxs) {
-                Text("Pair your first tag").font(.tTitle1).foregroundStyle(Color.ink)
-                Text("Hold the top of your phone to it.").font(.tSubhead).foregroundStyle(Color.inkSecondary)
+                Text(pairedName == nil ? "Pair your first tag" : "Paired").font(.tTitle1).foregroundStyle(Color.ink)
+                Text(pairedName ?? "Hold the top of your phone to it.").font(.tSubhead).foregroundStyle(Color.inkSecondary)
             }
             .multilineTextAlignment(.center)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: glass ? .top : .center)
+    }
+
+    private var artwork: some View {
+        ZStack {
+            Circle().strokeBorder(Color.slateLine, lineWidth: 2).opacity(0.6).frame(width: 216, height: 216)
+            Circle().fill(Color.slateGlow).frame(width: 164, height: 164).blur(radius: 20)
+            Circle().fill(Color.surface2).frame(width: 168, height: 168)
+            Image(systemName: "wave.3.right")
+                .font(.system(size: 48, weight: .light))
+                .foregroundStyle(Color.ink)
+        }
+        .frame(width: 220, height: 220)
+        .accessibilityHidden(true)
     }
 }
 
 private extension View {
+    /// Square artwork of side `from` drawn at `scale`, taking only the room it then needs.
+    func shrunk(_ scale: CGFloat, from side: CGFloat) -> some View {
+        scaleEffect(scale).frame(width: side * scale, height: side * scale)
+    }
+
     /// A step on the onboarding background, without the footer.
     func stepPreview(_ colorScheme: ColorScheme) -> some View {
         padding(.horizontal, Space.lg)

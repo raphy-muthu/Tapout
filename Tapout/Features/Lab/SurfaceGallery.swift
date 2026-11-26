@@ -7,6 +7,9 @@ import WidgetKit
 struct SurfaceGallery: View {
     let model: AppModel
 
+    /// With the Lab's switch on, the flat-color faces the widgets and the Live Activity then draw.
+    @LivingGlassFlag private var flat
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Space.lg) {
@@ -20,7 +23,7 @@ struct SurfaceGallery: View {
                 row("Timer · 10 h", timerSample(1))
                 row("Open", .sample(.open(relockAt: .now + 272, resumesFrom: .now - 2832)))
                 row("Unlocked", .sample(.unlocked))
-                tintedSection
+                if !flat { tintedSection }
                 liveActivityRow
             }
             .padding(Space.md)
@@ -38,14 +41,31 @@ struct SurfaceGallery: View {
         VStack(alignment: .leading, spacing: Space.xs) {
             Text(title).font(.tHeadline)
             HStack(alignment: .top, spacing: Space.sm) {
-                tile(SmallFace(snapshot: snapshot, date: date), width: 170, height: 170)
+                if flat {
+                    flatTile(FlatSmallFace(snapshot: snapshot, date: date), snapshot: snapshot, date: date, width: 170)
+                } else {
+                    tile(SmallFace(snapshot: snapshot, date: date), width: 170, height: 170)
+                }
                 VStack(spacing: Space.sm) {
-                    tile(CircularFace(snapshot: snapshot, date: date), width: 76, height: 76, radius: 38)
-                    tile(RectangularFace(snapshot: snapshot, date: date), width: 172, height: 76, radius: 16)
+                    tile(CircularFace(snapshot: snapshot, date: date, bold: flat), width: 76, height: 76, radius: 38)
+                    tile(RectangularFace(snapshot: snapshot, date: date, bold: flat), width: 172, height: 76, radius: 16)
                 }
             }
-            tile(MediumFace(snapshot: snapshot, date: date), width: 364, height: 170)
+            if flat {
+                flatTile(FlatMediumFace(snapshot: snapshot, date: date), snapshot: snapshot, date: date, width: 364)
+            } else {
+                tile(MediumFace(snapshot: snapshot, date: date), width: 364, height: 170)
+            }
         }
+    }
+
+    /// A flat face on its field, which a real widget gets as its container background.
+    private func flatTile(_ face: some View, snapshot: LockSnapshot, date: Date, width: CGFloat) -> some View {
+        face
+            .padding(16)
+            .frame(width: width, height: 170)
+            .background(FlatPoster.home(snapshot, date: date).tone.field,
+                        in: RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
 
     /// The flat-orb faces iOS draws in tinted and clear modes, on a slate wash standing in for a tinted Home Screen.
@@ -86,13 +106,24 @@ struct SurfaceGallery: View {
         return VStack(alignment: .leading, spacing: Space.xs) {
             Text("Live Activity").font(.tHeadline)
             ForEach(states, id: \.0) { _, state, stale in
-                LockScreenCard(state: state, isStale: stale)
-                    .frame(width: 364)
-                    .background(Color.surface1, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                if flat {
+                    FlatLockScreenCard(state: state, isStale: stale)
+                        .frame(width: 364)
+                        .background(FlatPoster.activity(state, isStale: stale).tone.field,
+                                    in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                } else {
+                    LockScreenCard(state: state, isStale: stale)
+                        .frame(width: 364)
+                        .background(Color.surface1, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                }
             }
             ForEach(states, id: \.0) { _, state, stale in
                 HStack(spacing: Space.xs) {
-                    IslandOrb(state: state, isStale: stale, size: 26)
+                    if flat {
+                        FlatIslandDot(state: state, isStale: stale)
+                    } else {
+                        IslandOrb(state: state, isStale: stale, size: 26)
+                    }
                     Spacer(minLength: 0)
                     IslandTimer(state: state, isStale: stale, compact: true)
                 }
@@ -101,11 +132,17 @@ struct SurfaceGallery: View {
                 .background(Color.black, in: Capsule())
             }
             ForEach(states, id: \.0) { _, state, stale in
-                HStack(spacing: Space.sm) {
-                    IslandOrb(state: state, isStale: stale, size: 64)
-                    IslandTitle(state: state, isStale: stale)
-                    Spacer(minLength: 0)
-                    IslandTimer(state: state, isStale: stale)
+                Group {
+                    if flat {
+                        FlatIslandBlock(state: state, isStale: stale)
+                    } else {
+                        HStack(spacing: Space.sm) {
+                            IslandOrb(state: state, isStale: stale, size: 64)
+                            IslandTitle(state: state, isStale: stale)
+                            Spacer(minLength: 0)
+                            IslandTimer(state: state, isStale: stale)
+                        }
+                    }
                 }
                 .padding(Space.md)
                 .frame(width: 364)

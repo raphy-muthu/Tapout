@@ -9,6 +9,8 @@ struct RecapView: View {
     let total: TimeInterval
     let days: [Insights.Day]
     let comparison: Comparison?
+    /// Living glass: the bars are the chart's glass columns.
+    var glass = false
 
     static let size = CGSize(width: 360, height: 640)
 
@@ -68,8 +70,7 @@ struct RecapView: View {
         return VStack(spacing: 5) {
             HStack(alignment: .bottom, spacing: 8) {
                 ForEach(days, id: \.start) { day in
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(day.isToday ? Color.ember : Color.surface2)
+                    bar(isToday: day.isToday)
                         .frame(maxWidth: .infinity)
                         .frame(height: 8 + 45 * day.lockedTime / peak)
                 }
@@ -83,6 +84,15 @@ struct RecapView: View {
                         .frame(maxWidth: .infinity)
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private func bar(isToday: Bool) -> some View {
+        if glass {
+            GlassColumn(color: isToday ? .ember : .slate, radius: 8).opacity(isToday ? 1 : 0.55)
+        } else {
+            RoundedRectangle(cornerRadius: 8, style: .continuous).fill(isToday ? Color.ember : Color.surface2)
         }
     }
 }
@@ -104,10 +114,11 @@ struct RecapShare: Transferable, Sendable {
     let days: [Insights.Day]
     let comparison: Comparison?
     let colorScheme: ColorScheme
+    var glass = false
 
     func pngData() async -> Data? {
         await MainActor.run {
-            let view = RecapView(weekStart: weekStart, total: total, days: days, comparison: comparison)
+            let view = RecapView(weekStart: weekStart, total: total, days: days, comparison: comparison, glass: glass)
             return RecapImage.render(view, colorScheme: colorScheme)?.pngData()
         }
     }

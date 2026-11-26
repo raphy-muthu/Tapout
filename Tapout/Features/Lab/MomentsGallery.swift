@@ -55,10 +55,12 @@ private struct GalleryTimer: Identifiable {
 /// full-width button at the bottom, on the background colour. This approximates iOS's layout; the real
 /// screen is checked on the iPhone.
 private struct SealedScreenMock: View {
+    @LivingGlassFlag private var livingGlass
+
     var body: some View {
         VStack(spacing: 0) {
             Spacer()
-            if let image = ShieldOrbArt.render() {
+            if let image = ShieldOrbArt.render(glass: livingGlass) {
                 Image(uiImage: image)
                     .resizable()
                     .scaledToFit()

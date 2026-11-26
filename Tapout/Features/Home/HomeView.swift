@@ -47,11 +47,12 @@ struct HomeView: View {
     private var unlocked: some View {
         VStack(spacing: 0) {
             Spacer(minLength: 0)
-            // Shrinks the orb when the keyboard is up for the intention field.
+            // Shrinks the orb when the keyboard is up for the intention field, or the words are very large.
             ViewThatFits(in: .vertical) {
                 orbAndState(size: 300)
                 orbAndState(size: 200)
                 orbAndState(size: 120)
+                orbAndState(size: 64)
             }
             Spacer(minLength: 0)
             VStack(spacing: Space.sm) {
@@ -75,8 +76,9 @@ struct HomeView: View {
             }
             .foregroundStyle(Color.ink)
             .padding(.horizontal, Space.lg)
+            .padding(.vertical, Space.xs)
             .frame(maxWidth: typeSize.isAccessibilitySize ? .infinity : nil, minHeight: 56)
-            .background(Color.surface2, in: Capsule(style: .continuous))
+            .controlSurface(.surface2, in: Capsule(style: .continuous), shadowed: false)
             .contentShape(Capsule(style: .continuous))
         }
         .buttonStyle(PressScaleStyle())
@@ -92,6 +94,8 @@ struct HomeView: View {
                 Text("\(TimeFormat.short(model.phoneFreeToday())) phone-free today")
                     .font(.tSubhead)
                     .foregroundStyle(Color.inkTertiary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true) // never cut short: the orb gives way instead
             }
         }
     }
@@ -177,7 +181,7 @@ struct HomeView: View {
             Spacer(minLength: 0)
             VStack(spacing: 20) {
                 LivingOrb(tone: .slate, ringTone: .ember,
-                          ring: engine.session.remainingFraction(at: date), size: typeSize.isAccessibilitySize ? 140 : 244,
+                          ring: engine.session.remainingFraction(at: date), size: typeSize.isAccessibilitySize ? 96 : 244,
                           ripplesOnAppear: true, warmth: true)
                 VStack(spacing: Space.xxs) {
                     Text("Relocks in")

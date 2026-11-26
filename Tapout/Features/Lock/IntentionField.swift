@@ -19,8 +19,7 @@ struct IntentionField: View {
             // Grows with large text; at default sizes the 44pt minimum sets the height.
             .padding(.vertical, Space.xs)
             .frame(minHeight: 44)
-            .background(fill, in: Capsule(style: .continuous))
-            .cardShadow()
+            .controlSurface(fill, in: Capsule(style: .continuous))
             .accessibilityHint("Optional")
             .onChange(of: text) { _, new in
                 if new.count > AppModel.intentionLimit { text = String(new.prefix(AppModel.intentionLimit)) }

@@ -3,7 +3,7 @@ import ManagedSettingsUI
 import UIKit
 
 /// The block screen from design/screens/Block.dc.html: the app's own sealed ember orb (pre-rendered,
-/// see ShieldOrbArt), "Sealed" and "Tap a tag to open this app.", dark only. iOS shows a button whatever
+/// see ShieldOrbArt; the glass one with the Lab's Living glass switch), "Sealed" and "Tap a tag to open this app.", dark only. iOS shows a button whatever
 /// the design says, so it is an ember Close. The system font is the only one a shield can use.
 final class ShieldConfigurationExtension: ShieldConfigurationDataSource {
     override func configuration(shielding application: Application) -> ShieldConfiguration {
@@ -39,7 +39,8 @@ enum SealedShield {
 
     /// The app's glass orb, pre-rendered (see ShieldOrbArt). The drawn fallback only shows if the asset is missing.
     private static var icon: UIImage {
-        UIImage(named: "SealedOrb", in: .main, compatibleWith: dark)?.withRenderingMode(.alwaysOriginal) ?? fallbackOrb
+        let name = LivingGlassMirror.shieldImageName(glass: LivingGlassMirror.isOn())
+        return UIImage(named: name, in: .main, compatibleWith: dark)?.withRenderingMode(.alwaysOriginal) ?? fallbackOrb
     }
 
     /// A flat ember orb: a ring, a faint halo, the solid orb and its highlight.

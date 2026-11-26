@@ -9,6 +9,8 @@ struct LabView: View {
     let model: AppModel
     @State private var engine = LockEngine.live()
     @ObservedObject private var center = AuthorizationCenter.shared
+    @State private var onboardingRun: OnboardingPreview.Run?
+    @LivingGlassFlag private var livingGlass
 
     var body: some View {
         NavigationStack {
@@ -21,11 +23,22 @@ struct LabView: View {
                 }
                 Section("Living glass") {
                     NavigationLink("Effects") { EffectsGallery() }
+                    Button("Preview onboarding") { onboardingRun = OnboardingPreview.Run() }
+                    NavigationLink("Battery and heat") { PowerMeterView() }
                 }
                 logSection
             }
             .navigationTitle("Lab")
             .navigationBarTitleDisplayMode(.inline)
+        }
+        .fullScreenCover(item: $onboardingRun) { run in
+            OnboardingView(model: run.model, isPreview: true, scanner: OnboardingPreview.Scanner()) {
+                onboardingRun = nil
+            }
+            .environment(\.glassControls, livingGlass)
+            // Onboarding only ever runs unlocked; without this the preview would inherit a lock and couldn't save.
+            .environment(\.isLocked, false)
+            .environment(\.accent, .for(.unlocked))
         }
         .task { await refresh() }
     }

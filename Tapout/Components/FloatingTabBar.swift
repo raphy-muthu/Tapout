@@ -18,6 +18,11 @@ enum AppTab: CaseIterable {
 struct FloatingTabBar: View {
     @Binding var active: AppTab
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.glassControls) private var glass
+    @Environment(\.accent) private var accent
+    @Environment(\.isLocked) private var isLocked
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Namespace private var selection
 
     var body: some View {
         let light = colorScheme == .light
@@ -26,13 +31,19 @@ struct FloatingTabBar: View {
                 Button {
                     guard tab != active else { return }
                     Haptics.select()
-                    active = tab
+                    withAnimation(glass && !reduceMotion ? Motion.ui : nil) { active = tab }
                 } label: {
                     icon(for: tab)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .foregroundStyle(tab == active ? Color.ink : Color.inkTertiary)
+                        .foregroundStyle(tab == active ? (glass && isLocked ? accent.ink : Color.ink) : Color.inkTertiary)
                         .background {
-                            if tab == active { Capsule(style: .continuous).fill(Color.surface2) }
+                            if tab == active {
+                                if glass {
+                                    selectedPane.matchedGeometryEffect(id: "tab", in: selection)
+                                } else {
+                                    Capsule(style: .continuous).fill(Color.surface2)
+                                }
+                            }
                         }
                         .contentShape(Capsule(style: .continuous))
                 }
@@ -43,9 +54,26 @@ struct FloatingTabBar: View {
         }
         .padding(Space.xs)
         .frame(height: 64)
-        .background(Color.surface1, in: Capsule(style: .continuous))
+        .background { barSurface }
         .shadow(color: .black.opacity(light ? 0.10 : 0.4), radius: light ? 10 : 12, y: light ? 4 : 8)
         .padding(.horizontal, Space.lg)
+    }
+
+    /// The sliding, glowing selection.
+    private var selectedPane: some View {
+        let shape = Capsule(style: .continuous)
+        return shape.fill(accent.fill.opacity(0.24))
+            .overlay { shape.strokeBorder(accent.fill.opacity(0.55), lineWidth: 1) }
+            .shadow(color: accent.fill.opacity(0.55), radius: 10)
+    }
+
+    @ViewBuilder
+    private var barSurface: some View {
+        if glass {
+            GlassPane(shape: Capsule(style: .continuous), tint: .surface1)
+        } else {
+            Capsule(style: .continuous).fill(Color.surface1)
+        }
     }
 
     @ViewBuilder

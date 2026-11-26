@@ -76,6 +76,9 @@ struct MilestoneView: View {
                     Text("Share")
                         .font(.tHeadline)
                         .foregroundStyle(Color.onEmber)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, Space.md)
+                        .padding(.vertical, Space.xs)
                         .frame(maxWidth: .infinity, minHeight: 56)
                         .background(Color.ember, in: Capsule(style: .continuous))
                 }

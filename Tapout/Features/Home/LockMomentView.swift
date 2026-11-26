@@ -32,7 +32,20 @@ struct LockMomentView: View {
         .padding(.horizontal, Space.lg)
         .padding(.vertical, Space.xs)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.bg.ignoresSafeArea())
+        .background {
+            ZStack {
+                Color.bg
+                // The locked background arrives with the lock, so Home takes over without a jump.
+                if livingGlass {
+                    LivingGlassReader { choice in
+                        if choice == .glass {
+                            LivingBackdrop(tone: frame > 1 ? .ember : .slate)
+                        }
+                    }
+                }
+            }
+            .ignoresSafeArea()
+        }
         .task { await play() }
     }
 
@@ -43,10 +56,11 @@ struct LockMomentView: View {
         }
         .foregroundStyle(Color.ink)
         .padding(.horizontal, 14)
-        .frame(height: 36)
-        .background(Color.surface1, in: Capsule(style: .continuous))
-        .cardShadow()
-        .frame(height: 44)
+        .padding(.vertical, Space.xxs)
+        .frame(minHeight: 36)
+        .controlSurface(.surface1, in: Capsule(style: .continuous))
+        .environment(\.glassControls, livingGlass)
+        .frame(minHeight: 44)
     }
 
     private var orb: some View {
@@ -66,6 +80,7 @@ struct LockMomentView: View {
                               warmth: frame > 1, changedFrom: .slate)
                 }
                 .frame(width: 280, height: 280)
+                .background { if frame > 1 { LockBloom() } }
                 .lockMomentMatch(.orb, inOverlay: true)
                 // This is the lock. Home's orb, appearing ember underneath or after the hand-over, must not
                 // swing from slate a second time.

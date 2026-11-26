@@ -21,6 +21,11 @@ enum Motion {
     /// A step settling into place.
     static var detent: Animation { .spring(response: 0.18, dampingFraction: 0.8) }
 
+    /// For anything that moves, grows or sweeps: `animation`, or none with Reduce Motion, so it happens at once.
+    static func travel(_ animation: Animation, reduceMotion: Bool) -> Animation? {
+        reduceMotion ? nil : animation
+    }
+
     /// The animation to use: `animation`, or a short crossfade when Reduce Motion is on.
     static func resolved(_ animation: Animation, reduceMotion: Bool) -> Animation {
         reduceMotion ? .easeInOut(duration: 0.25) : animation

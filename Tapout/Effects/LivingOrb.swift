@@ -85,6 +85,8 @@ struct LivingOrb: View {
     /// ripples, whatever the memory says. Otherwise the orb swings only if the glass orb last showed a different
     /// tone (`OrbToneMemory`).
     var changedFrom: OrbTone? = nil
+    /// Seconds between ripples the glass orb sends by itself, as while a tag is awaited; nil for none.
+    var rippleEvery: TimeInterval? = nil
 
     @State private var ripples = OrbRipples()
     /// The tone the shader is drawing, 0 slate to 1 ember. Animated in its own transaction (`Motion.tone`),
@@ -94,6 +96,8 @@ struct LivingOrb: View {
     @State private var entrance: OrbEntrance?
     /// `changedFrom` counts once: coming back from the background is not the change again.
     @State private var appeared = false
+    /// Counts taps on the glass orb; each one bounces it.
+    @State private var taps = 0
     private let motion = MotionSource.shared
 
     private var targetTone: Double { tone == .ember ? 1 : 0 }
@@ -113,6 +117,25 @@ struct LivingOrb: View {
                         if warmth, let entrance {
                             OrbWarmth(tone: tone, from: entrance.warmFrom, size: size)
                                 .animation(Motion.tone, value: tone)
+                        }
+                    }
+                    // Alongside any Button around the orb, so the locked orb still starts a scan.
+                    .simultaneousGesture(TapGesture().onEnded {
+                        taps += 1
+                        ripples.add(at: Date.timeIntervalSinceReferenceDate)
+                        HapticEngine.shared.play(.scrub)
+                    })
+                    .keyframeAnimator(initialValue: 1.0, trigger: taps) { view, scale in
+                        view.scaleEffect(scale)
+                    } keyframes: { _ in
+                        CubicKeyframe(0.94, duration: 0.09)
+                        SpringKeyframe(1.0, duration: 0.45, spring: .bouncy)
+                    }
+                    .task(id: rippleEvery) {
+                        guard let rippleEvery else { return }
+                        while !Task.isCancelled {
+                            ripples.add(at: Date.timeIntervalSinceReferenceDate)
+                            try? await Task.sleep(for: .seconds(rippleEvery))
                         }
                     }
                     .onAppear {

@@ -47,19 +47,65 @@ struct DefaultPlaceCard: View {
     }
 }
 
+/// The default place's card with the Living glass switch on: a live glass orb that ripples when tapped,
+/// over the name, which opens the place.
+struct GlassPlaceCard: View {
+    let name: String
+    let locks: Int
+    let onOpen: () -> Void
+
+    @Environment(\.isLocked) private var isLocked
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    var body: some View {
+        VStack(spacing: Space.md) {
+            LivingOrb(tone: isLocked ? .ember : .slate, ring: isLocked ? 1 : 0, size: 170)
+                .padding(.vertical, Space.md) // room for the glow
+                .accessibilityHidden(true)
+            Button(action: onOpen) {
+                VStack(spacing: Space.xxs) {
+                    HStack(spacing: Space.xs) {
+                        Text(name).font(.tTitle1).foregroundStyle(Color.ink)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(Color.inkSecondary)
+                            .accessibilityHidden(true)
+                    }
+                    Text("Default · \(Copy.count(locks, "lock", "locks"))")
+                        .font(.tSubhead)
+                        .foregroundStyle(Color.inkSecondary)
+                }
+                .multilineTextAlignment(typeSize.isAccessibilitySize ? .center : .leading)
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(PressScaleStyle())
+        }
+        .frame(maxWidth: .infinity)
+        .card(radius: Radius.sheet)
+    }
+}
+
 /// A grid tile for every other place.
 struct PlaceTile: View {
     let name: String
     let locks: Int
 
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.glassControls) private var glass
 
     var body: some View {
         HStack(spacing: Space.sm) {
-            Circle()
-                .fill(Color.surface2)
-                .frame(width: 44, height: 44)
-                .overlay { Circle().fill(Color.slateLine).frame(width: 8, height: 8) }
+            if glass {
+                OrbView(tone: .slate, size: 36)
+                    .frame(width: 44, height: 44)
+                    .accessibilityHidden(true)
+            } else {
+                Circle()
+                    .fill(Color.surface2)
+                    .frame(width: 44, height: 44)
+                    .overlay { Circle().fill(Color.slateLine).frame(width: 8, height: 8) }
+            }
             VStack(alignment: .leading, spacing: 2) {
                 Text(name).font(.tHeadline).foregroundStyle(Color.ink)
                     .lineLimit(typeSize.isAccessibilitySize ? nil : 1).minimumScaleFactor(0.8)

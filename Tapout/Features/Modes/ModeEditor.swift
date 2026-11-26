@@ -8,6 +8,7 @@ struct ModeEditor: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.isLocked) private var isLocked
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.glassControls) private var glass
     @State private var draft: Mode
     @State private var days: Set<Int>
     @State private var start: Date
@@ -42,7 +43,7 @@ struct ModeEditor: View {
         }
         .scrollIndicators(.hidden)
         .scrollDismissesKeyboard(.interactively)
-        .background(Color.bg.ignoresSafeArea())
+        .background { GlassPageBackground(tone: tone, isOn: glass).ignoresSafeArea() }
         .familyActivityPicker(isPresented: $picking, selection: $draft.selection)
         .confirmationDialog("Delete \(storedName)?", isPresented: $confirmingDelete, titleVisibility: .visible) {
             Button("Delete", role: .destructive) {
@@ -70,7 +71,11 @@ struct ModeEditor: View {
                     .contentShape(Rectangle())
             }
             Spacer()
-            OrbView(tone: .slate, size: 44)
+            if glass {
+                LivingOrb(tone: tone, ring: isLocked ? 1 : 0, size: 72)
+            } else {
+                OrbView(tone: .slate, size: 44)
+            }
             Spacer()
             Button(action: save) {
                 Text("Save")
@@ -83,6 +88,12 @@ struct ModeEditor: View {
             .opacity(canSave ? 1 : 0.45)
         }
     }
+
+    /// Ember while locked, as everywhere. Only the glass look uses it.
+    private var tone: OrbTone { isLocked ? .ember : .slate }
+
+    /// Footnotes need the stronger ink over the glow.
+    private var footnoteInk: Color { glass ? .inkSecondary : .inkTertiary }
 
     private var nameField: some View {
         VStack(alignment: .leading, spacing: Space.xxs) {
@@ -98,9 +109,11 @@ struct ModeEditor: View {
 
     private var blockCard: some View {
         VStack(alignment: .leading, spacing: Space.md) {
-            HStack {
+            // The count goes under the title at accessibility sizes, so "0 apps" stays on one line.
+            (typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: Space.xxs))
+                                          : AnyLayout(HStackLayout())) {
                 Text("Block").font(.tHeadline).foregroundStyle(Color.ink)
-                Spacer()
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 Button { picking = true } label: {
                     Text("\(ModeText.apps(draft)) ›")
                         .font(.tSubhead)
@@ -158,7 +171,7 @@ struct ModeEditor: View {
             DayChips(days: $days)
             Text(whenFootnote)
                 .font(.tFootnote)
-                .foregroundStyle(Color.inkTertiary)
+                .foregroundStyle(footnoteInk)
         }
         .padding(.vertical, 20)
         .padding(.horizontal, Space.lg)
@@ -177,7 +190,7 @@ struct ModeEditor: View {
             if model.places.isEmpty {
                 Text("Pair a place to choose where this mode unlocks.")
                     .font(.tFootnote)
-                    .foregroundStyle(Color.inkTertiary)
+                    .foregroundStyle(footnoteInk)
             } else {
                 FlowLayout {
                     ForEach(model.places) { place in
@@ -192,7 +205,7 @@ struct ModeEditor: View {
                 }
                 Text(draft.unlockPlaces.isEmpty ? "Any of your places unlocks this mode." : "Only these places unlock this mode.")
                     .font(.tFootnote)
-                    .foregroundStyle(Color.inkTertiary)
+                    .foregroundStyle(footnoteInk)
             }
         }
         .padding(.vertical, 20)

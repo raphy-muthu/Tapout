@@ -9,6 +9,7 @@ struct ChoiceChip: View {
     let action: () -> Void
 
     @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.glassControls) private var glass
 
     var body: some View {
         Button {
@@ -19,8 +20,15 @@ struct ChoiceChip: View {
                 .font(fillsWidth ? .tSubhead.weight(.semibold) : .tSubhead.weight(.medium))
                 .foregroundStyle(isOn ? Color.bg : Color.inkSecondary)
                 .padding(.horizontal, fillsWidth ? 0 : Space.md)
+                .padding(.vertical, Space.xxs) // keeps large labels off the edges
                 .frame(maxWidth: fillsWidth ? .infinity : nil, minHeight: 44)
-                .background(isOn ? Color.ink : Color.surface2, in: Capsule(style: .continuous))
+                .background {
+                    if glass && !isOn {
+                        GlassPane(shape: Capsule(style: .continuous), tint: .surface2)
+                    } else {
+                        Capsule(style: .continuous).fill(isOn ? Color.ink : Color.surface2)
+                    }
+                }
                 .contentShape(Capsule(style: .continuous))
         }
         .buttonStyle(PressScaleStyle())

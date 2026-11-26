@@ -14,13 +14,18 @@ struct LockActivityAttributes: ActivityAttributes {
         /// While a timer lock runs, when it ends: the activity counts down to it instead of up. Optional and
         /// decoded as nil when absent, so an activity started by an older build keeps working.
         var timerEndsAt: Date?
+        /// Draw the flat-color look (the Lab's Living glass switch). Absent when off, so an activity started by
+        /// an older build keeps working.
+        var flat: Bool?
 
-        init(lockedFrom: Date, openUntil: Date?, modeName: String, placeName: String?, timerEndsAt: Date? = nil) {
+        init(lockedFrom: Date, openUntil: Date?, modeName: String, placeName: String?, timerEndsAt: Date? = nil,
+             flat: Bool? = nil) {
             self.lockedFrom = lockedFrom
             self.openUntil = openUntil
             self.modeName = modeName
             self.placeName = placeName
             self.timerEndsAt = timerEndsAt
+            self.flat = flat
         }
 
         /// Whether a stale activity is stale because its timer ended (the timer's end is the stale date, see
@@ -44,17 +49,18 @@ enum LiveActivityPlan {
 
     /// nil while unlocked. Dates are whole seconds, so recomputing a snapshot doesn't cause updates. A
     /// changed end date makes the content differ, so `decide` updates the activity when a timer starts or ends.
-    static func content(for snapshot: LockSnapshot) -> LockActivityAttributes.ContentState? {
+    static func content(for snapshot: LockSnapshot, flat: Bool = false) -> LockActivityAttributes.ContentState? {
         func whole(_ date: Date) -> Date { Date(timeIntervalSinceReferenceDate: date.timeIntervalSinceReferenceDate.rounded()) }
         switch snapshot.state {
         case .unlocked:
             return nil
         case .locked(let from):
             return .init(lockedFrom: whole(from), openUntil: nil, modeName: snapshot.modeName, placeName: snapshot.placeName,
-                         timerEndsAt: snapshot.timerEndsAt.map(whole))
+                         timerEndsAt: snapshot.timerEndsAt.map(whole), flat: flat ? true : nil)
         case .open(let relockAt, let resumesFrom):
             return .init(lockedFrom: whole(resumesFrom), openUntil: whole(relockAt), modeName: snapshot.modeName,
-                         placeName: snapshot.placeName, timerEndsAt: snapshot.timerEndsAt.map(whole))
+                         placeName: snapshot.placeName, timerEndsAt: snapshot.timerEndsAt.map(whole),
+                         flat: flat ? true : nil)
         }
     }
 
@@ -74,8 +80,9 @@ enum LiveActivityPlan {
     /// for a while and must not stop a new one from starting.
     static func countsAsCurrent(_ phase: Phase) -> Bool { phase != .over }
 
-    static func decide(snapshot: LockSnapshot, enabled: Bool, current: LockActivityAttributes.ContentState?) -> Action {
-        guard enabled, let wanted = content(for: snapshot) else { return current == nil ? .none : .end }
+    static func decide(snapshot: LockSnapshot, enabled: Bool, current: LockActivityAttributes.ContentState?,
+                       flat: Bool = false) -> Action {
+        guard enabled, let wanted = content(for: snapshot, flat: flat) else { return current == nil ? .none : .end }
         guard let current else { return .start(wanted) }
         return current == wanted ? .none : .update(wanted)
     }

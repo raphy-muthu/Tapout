@@ -65,7 +65,7 @@ struct SmallFace: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
         case .unlocked:
-            Text(TimeFormat.short(snapshot.today)).font(.numberMedium).foregroundStyle(Color.ink)
+            Text(TimeFormat.short(snapshot.today)).font(.widgetValue).foregroundStyle(Color.ink)
         }
     }
 
@@ -104,7 +104,7 @@ struct MediumFace: View {
                     .lineLimit(1)
                 Text("left").font(.tCaption).foregroundStyle(Color.emberInk)
             } else {
-                Text(TimeFormat.short(snapshot.weekTotal)).font(.numberDisplay).foregroundStyle(Color.ink)
+                Text(TimeFormat.short(snapshot.weekTotal)).font(.widgetTotal).foregroundStyle(Color.ink)
                     .minimumScaleFactor(0.6)
                     .lineLimit(1)
                 Text("phone-free this week").font(.tCaption).foregroundStyle(Color.inkSecondary)
@@ -162,12 +162,14 @@ struct FlatOrb: View {
 struct CircularFace: View {
     let snapshot: LockSnapshot
     var date: Date = .now
+    /// A larger, heavier number (the Living glass switch).
+    var bold = false
 
     var body: some View {
         ZStack {
             AccessoryWidgetBackground()
             VStack(spacing: 1) {
-                Image(systemName: symbol).font(.system(size: 12, weight: .semibold)).widgetAccentable()
+                Image(systemName: symbol).font(.system(size: bold ? 10 : 12, weight: .semibold)).widgetAccentable()
                 Group {
                     switch snapshot.state(at: date) {
                     case .locked(let from): if let end = snapshot.timerEndsAt { timeLeft(end) } else { Text(from, style: .timer) }
@@ -175,9 +177,10 @@ struct CircularFace: View {
                     case .unlocked: Text(TimeFormat.short(snapshot.today))
                     }
                 }
-                .font(.system(size: 12, weight: .medium).monospacedDigit())
+                .font(.system(size: bold ? 17 : 12, weight: bold ? .heavy : .medium).monospacedDigit())
                 .multilineTextAlignment(.center)
-                .minimumScaleFactor(0.6)
+                // Small enough for a ten-hour lock to fit the circle.
+                .minimumScaleFactor(bold ? 0.35 : 0.6)
                 .lineLimit(1)
             }
             .padding(4)
@@ -193,10 +196,15 @@ struct CircularFace: View {
 struct RectangularFace: View {
     let snapshot: LockSnapshot
     var date: Date = .now
+    /// A larger, heavier number under a smaller title (the Living glass switch).
+    var bold = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 1) {
-            Label(title, systemImage: symbol).font(.headline).widgetAccentable()
+            Label(title, systemImage: symbol)
+                .font(bold ? .system(size: 12, weight: .heavy) : .headline)
+                .textCase(bold ? .uppercase : nil)
+                .widgetAccentable()
             Group {
                 switch snapshot.state(at: date) {
                 case .locked(let from):
@@ -205,7 +213,7 @@ struct RectangularFace: View {
                 case .unlocked: Text("\(TimeFormat.short(snapshot.today)) today")
                 }
             }
-            .font(.body.monospacedDigit())
+            .font(bold ? .system(size: 26, weight: .heavy).monospacedDigit() : .body.monospacedDigit())
             .multilineTextAlignment(.leading)
             .lineLimit(1)
             .minimumScaleFactor(0.6)

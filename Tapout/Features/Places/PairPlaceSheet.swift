@@ -17,6 +17,7 @@ struct PairPlaceSheet: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.isLocked) private var isLocked
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.glassControls) private var glass
     @State private var scanner: any TagScanning
     @State private var phase = Phase.scanning
     @State private var name = ""
@@ -55,7 +56,13 @@ struct PairPlaceSheet: View {
         .presentationDetents(typeSize.isAccessibilitySize ? [.large] : [.height(664)])
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(Radius.sheet)
-        .presentationBackground(Color.surface1)
+        .presentationBackground {
+            if glass {
+                GlassPageBackground(tone: PairingOrb.look(phase).tone, isOn: true)
+            } else {
+                Color.surface1
+            }
+        }
         .task(id: attempt) { await scan() }
         .onChange(of: isLocked) { _, locked in
             if locked { dismiss() }
@@ -78,28 +85,50 @@ struct PairPlaceSheet: View {
 
     private var status: some View {
         VStack(spacing: Space.md) {
-            ZStack {
-                Circle()
-                    .strokeBorder(Color.slateLine, lineWidth: 2)
-                    .frame(width: 156, height: 156)
-                    .opacity(phase == .scanning && pulsing ? 0.35 : 1)
-                Circle().fill(Color.surface2).frame(width: 124, height: 124)
-                Image(systemName: symbol)
-                    .font(.system(size: 40, weight: .medium))
-                    .foregroundStyle(Color.slateInk)
-                    .accessibilityHidden(true)
-            }
-            .frame(width: 160, height: 160)
-            .onAppear {
-                guard !reduceMotion else { return }
-                withAnimation(Motion.readyPulse) { pulsing = true }
-            }
+            if glass { orb } else { disc }
             Text(statusText)
                 .font(.tHeadline)
                 .foregroundStyle(statusColor)
                 .multilineTextAlignment(.center)
         }
         .accessibilityElement(children: .combine)
+    }
+
+    /// The same footprint as the disc, so the words stay clear of the system's NFC sheet.
+    private var orb: some View {
+        let look = PairingOrb.look(phase)
+        let size: CGFloat = typeSize.isAccessibilitySize ? 130 : 160
+        return LivingOrb(tone: look.tone, ring: look.ring, size: size, rippleEvery: look.rippleEvery)
+            .overlay {
+                if case .failed = phase {
+                    Image(systemName: symbol)
+                        .font(.system(size: 40, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .shadow(color: .black.opacity(0.5), radius: 6)
+                }
+            }
+            // The ring sweeps closed on a read; with Reduce Motion it is simply closed.
+            .animation(Motion.travel(Motion.lock, reduceMotion: reduceMotion), value: phase)
+            .accessibilityHidden(true)
+    }
+
+    private var disc: some View {
+        ZStack {
+            Circle()
+                .strokeBorder(Color.slateLine, lineWidth: 2)
+                .frame(width: 156, height: 156)
+                .opacity(phase == .scanning && pulsing ? 0.35 : 1)
+            Circle().fill(Color.surface2).frame(width: 124, height: 124)
+            Image(systemName: symbol)
+                .font(.system(size: 40, weight: .medium))
+                .foregroundStyle(Color.slateInk)
+                .accessibilityHidden(true)
+        }
+        .frame(width: 160, height: 160)
+        .onAppear {
+            guard !reduceMotion else { return }
+            withAnimation(Motion.readyPulse) { pulsing = true }
+        }
     }
 
     private var nameField: some View {
@@ -113,7 +142,8 @@ struct PairPlaceSheet: View {
                 .padding(.horizontal, Space.md)
                 .padding(.vertical, Space.xs) // grows with large text; the 56pt minimum holds at default sizes
                 .frame(minHeight: 56)
-                .background(Color.surface2, in: RoundedRectangle(cornerRadius: Radius.inner, style: .continuous))
+                .controlSurface(.surface2, in: RoundedRectangle(cornerRadius: Radius.inner, style: .continuous),
+                                shadowed: false)
         }
     }
 
@@ -154,7 +184,11 @@ struct PairPlaceSheet: View {
     }
 
     private var statusColor: Color {
-        if case .failed = phase { .inkSecondary } else { .slateInk }
+        switch phase {
+        case .failed: .inkSecondary
+        case .found: glass ? .emberInk : .slateInk
+        case .scanning: .slateInk
+        }
     }
 
     private var trimmedName: String {
@@ -170,7 +204,7 @@ struct PairPlaceSheet: View {
                 Haptics.mismatch()
                 phase = .failed("Already paired as \(existing.name).")
             } else {
-                Haptics.select()
+                if glass { HapticEngine.shared.play(.paired) } else { Haptics.select() }
                 name = Self.suggestions.first { suggestion in !model.places.contains { $0.name == suggestion } } ?? ""
                 phase = .found(uid)
             }
@@ -226,6 +260,7 @@ private func pairPreview(_ behavior: PreviewScanner.Behavior, _ scheme: ColorSch
         .preferredColorScheme(scheme)
 }
 
+#Preview("Scanning · glass") { pairPreview(.wait, .dark).environment(\.glassControls, true) }
 #Preview("Scanning · dark") { pairPreview(.wait, .dark) }
 #Preview("Tag found · dark") { pairPreview(.newTag, .dark) }
 #Preview("Tag found · light") { pairPreview(.newTag, .light) }

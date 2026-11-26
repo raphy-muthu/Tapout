@@ -47,46 +47,88 @@ static float ellipse(float2 p, float2 c, float2 radii) {
     float inside = 1.0 - smoothstep(R - aa, R + aa, r);
     if (inside > 0.0) {
         float2 pn = p / R;                                       // -1...1 across the sphere
-        float2 centre = float2(tilt.x * 0.24, 0.16 + tilt.y * 0.24);
-        float bt = length(pn - centre) / 1.532;
-        float3 c = mix(hi, mid, saturate(bt / 0.34));
-        c = mix(c, deep, saturate((bt - 0.34) / 0.38));
-        c = mix(c, edge, saturate((bt - 0.72) / 0.28));
+        float rr = dot(pn, pn);
+        // Lens: what is seen through the glass bends more toward the edge.
+        float2 q = pn * (0.72 + 0.42 * rr);
 
-        // Light pooling at the bottom of the glass. Drawn before the inner shading, because CSS
-        // paints inset shadows above the background gradients.
-        float pool = 1.0 - saturate(ellipse(pn, float2(-tilt.x * 0.16, 0.84 - tilt.y * 0.10), float2(1.4, 0.68)) / 0.7);
-        c = mix(c, float3(1.0), 0.32 * pool);
+        // A tap sends a wave across the surface, bending the light as it passes.
+        float wave = 0.0;
+        for (int i = 0; i < 3; i++) {
+            float age = rippleAges[i];
+            if (age >= 0.0 && age < 0.9) {
+                float front = age / 0.9 * 1.25;
+                float d = length(pn) - front;
+                wave += exp(-d * d * 60.0) * (1.0 - age / 0.9) * amplitude;
+            }
+        }
+        q += pn * wave * 0.22;
 
-        // Inner shading, as Orb.dc.html's inset shadows and OrbView's .inner shadows: a little dark
-        // along the top inner edge (0.28), a little light along the bottom inner edge (0.14).
-        // Positive y is down. (smoothstep needs edge0 < edge1 in Metal, so a falling ramp is 1 - smoothstep.)
-        c = mix(c, float3(0.0), 0.28 * smoothstep(0.7, 1.0, length(pn - float2(0.0, 0.12))) * (1.0 - smoothstep(-0.8, 0.1, pn.y)));
-        c = mix(c, float3(1.0), 0.14 * smoothstep(0.75, 1.0, length(pn - float2(0.0, -0.10))) * smoothstep(-0.1, 0.8, pn.y));
+        float2 centre = float2(tilt.x * 0.40, 0.14 + tilt.y * 0.40);
+        float bt = length(q - centre) / 1.30;
+        float3 c = mix(hi, mid, saturate(bt / 0.30));
+        c = mix(c, deep, saturate((bt - 0.30) / 0.36));
+        c = mix(c, edge, saturate((bt - 0.66) / 0.30));
 
-        // A slow caustic drifting through the glass.
-        float a = time * 0.5 * amplitude;
-        float caustic = 1.0 - saturate(ellipse(pn, float2(cos(a) * 0.38 + tilt.x * 0.2, sin(a * 1.3) * 0.30), float2(0.6, 0.4)));
-        c = mix(c, float3(1.0), 0.17 * caustic);
+        // Light flowing inside the glass: two slow warped fields, brightest where they cross.
+        float t1 = time * amplitude;
+        float2 w = q * 2.4 + tilt * 1.1;
+        float f1 = sin(w.x * 1.3 + t1 * 0.80 + 1.6 * sin(w.y * 1.1 - t1 * 0.55));
+        float f2 = sin(w.y * 1.5 - t1 * 0.62 + 1.4 * sin(w.x * 0.9 + t1 * 0.47));
+        float flow = smoothstep(0.10, 0.95, f1 * f2) * (1.0 - smoothstep(0.35, 1.0, rr));
+        float veil = smoothstep(0.25, 1.0, -f1 * f2) * (1.0 - smoothstep(0.3, 1.0, rr));
+        c = mix(c, hi, 0.58 * flow);
+        c = mix(c, deep, 0.34 * veil);
 
-        // Main gloss, follows the tilt.
-        float ge = ellipse(pn, float2(-0.30 + tilt.x * 0.36, -0.52 + tilt.y * 0.36), float2(0.6, 0.4));
-        float gloss = ge < 0.45 ? mix(0.92, 0.35, ge / 0.45) : mix(0.35, 0.0, saturate((ge - 0.45) / 0.55));
+        // Light pooling at the bottom of the glass.
+        float pool = 1.0 - saturate(ellipse(pn, float2(-tilt.x * 0.30, 0.80 - tilt.y * 0.18), float2(1.1, 0.50)) / 0.8);
+        c = mix(c, hi, 0.55 * pool * pool);
+
+        // The edge falls away into shadow, which is what makes it read as a solid ball.
+        float falloff = smoothstep(0.55, 1.0, length(pn - float2(-tilt.x * 0.08, -tilt.y * 0.08)));
+        c = mix(c, edge * 0.55, 0.55 * falloff);
+
+        // Reflection of an upper light: a crescent just inside the rim, sliding with the tilt.
+        float2 lean = float2(tilt.x * 0.22, tilt.y * 0.22);
+        float outer = 1.0 - smoothstep(0.84, 0.94, length(pn - lean * 0.3));
+        float cut = smoothstep(0.76, 0.98, length(pn - float2(0.16, 0.22) - lean));
+        c = mix(c, float3(1.0), 0.62 * outer * cut * (1.0 - smoothstep(-0.5, 0.45, pn.x + pn.y)));
+
+        // Bounce light along the lower edge, in the state's colour.
+        float outer2 = 1.0 - smoothstep(0.90, 0.99, length(pn));
+        float cut2 = smoothstep(0.82, 1.02, length(pn - float2(-0.14, -0.20) + lean));
+        c = mix(c, mix(mid, float3(1.0), 0.45), 0.75 * outer2 * cut2 * smoothstep(0.0, 0.9, pn.x * 0.5 + pn.y));
+
+        // Main gloss, with a hard hot spot at its heart.
+        float2 g = float2(-0.34 + tilt.x * 0.52, -0.48 + tilt.y * 0.52);
+        float ge = ellipse(pn, g, float2(0.46, 0.30));
+        float gloss = ge < 0.45 ? mix(0.88, 0.28, ge / 0.45) : mix(0.28, 0.0, saturate((ge - 0.45) / 0.55));
         c = mix(c, float3(1.0), gloss);
+        float spot = 1.0 - smoothstep(0.35, 1.0, ellipse(pn, g + float2(-0.03, -0.02), float2(0.11, 0.075)));
+        c = mix(c, float3(1.0), spot);
 
-        // Small secondary gloss.
-        float se = 1.0 - saturate(ellipse(pn, float2(0.32 - tilt.x * 0.1, 0.56 - tilt.y * 0.1), float2(0.24, 0.14)));
-        c = mix(c, float3(1.0), 0.4 * se);
+        // Small secondary glints.
+        float se = 1.0 - saturate(ellipse(pn, float2(0.36 - tilt.x * 0.30, 0.50 - tilt.y * 0.30), float2(0.17, 0.10)));
+        c = mix(c, float3(1.0), 0.55 * se);
+        float se2 = 1.0 - saturate(ellipse(pn, float2(0.52 - tilt.x * 0.22, 0.30 - tilt.y * 0.22), float2(0.05, 0.05)));
+        c = mix(c, float3(1.0), 0.8 * se2);
 
-        // Fresnel rim.
-        c = mix(c, float3(1.0), 0.2 * saturate((length(pn - tilt * 0.1) - 0.74) / 0.26));
+        // The wave's crest.
+        c = mix(c, float3(1.0), saturate(wave) * 0.45);
 
         out = over(out, c, inside);
+
+        // Fresnel rim, split slightly into warm and cool like thick glass.
+        float angle = atan2(pn.y, pn.x);
+        float shimmer = 0.5 + 0.5 * sin(angle * 2.0 + t1 * 0.6 + tilt.x * 3.0);
+        float warm = 1.0 - smoothstep(0.0, 0.05, abs(length(pn) - 0.955));
+        float cool = 1.0 - smoothstep(0.0, 0.05, abs(length(pn) - 0.905));
+        out = over(out, mix(mid, float3(1.0), 0.45), 0.34 * warm * shimmer * inside);
+        out = over(out, float3(0.68, 0.82, 1.0), 0.24 * cool * (1.0 - shimmer) * inside);
     }
 
     // Hairline rim.
     float rim = 1.0 - smoothstep(0.0, aa * 1.4, abs(r - (R - aa * 0.7)));
-    out = over(out, float3(1.0), 0.22 * rim);
+    out = over(out, float3(1.0), 0.34 * rim);
 
     // Ripples travelling outward from the sphere.
     for (int i = 0; i < 3; i++) {

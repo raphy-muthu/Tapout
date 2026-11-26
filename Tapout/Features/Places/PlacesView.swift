@@ -6,6 +6,7 @@ struct PlacesView: View {
 
     @Environment(\.isLocked) private var isLocked
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.glassControls) private var glass
     @State private var pairing = false
     @State private var selected: PairedTag?
 
@@ -14,7 +15,10 @@ struct PlacesView: View {
             VStack(alignment: .leading, spacing: 0) {
                 ScreenHeader(title: "Places", addLabel: "Pair a place") { pairing = true }
                 Group {
-                    if let place = model.defaultPlace {
+                    if let place = model.defaultPlace, glass {
+                        GlassPlaceCard(name: place.name, locks: model.lockCount(at: place.uid)) { selected = place }
+                            .fingerTilt()
+                    } else if let place = model.defaultPlace {
                         Button { selected = place } label: {
                             DefaultPlaceCard(name: place.name, locks: model.lockCount(at: place.uid))
                         }
@@ -30,6 +34,7 @@ struct PlacesView: View {
                             PlaceTile(name: place.name, locks: model.lockCount(at: place.uid))
                         }
                         .buttonStyle(PressScaleStyle())
+                        .fingerTilt(glass)
                     }
                     DashedTile(title: "Pair") { pairing = true }
                         .disabled(isLocked)
@@ -40,8 +45,9 @@ struct PlacesView: View {
             .padding(.vertical, Space.xs)
         }
         .scrollIndicators(.hidden)
-        .sheet(isPresented: $pairing) { PairPlaceSheet(model: model) }
-        .sheet(item: $selected) { PlaceSheet(model: model, place: $0) }
+        .modifier(StatusBarFade(isOn: glass))
+        .sheet(isPresented: $pairing) { PairPlaceSheet(model: model).environment(\.glassControls, glass) }
+        .sheet(item: $selected) { PlaceSheet(model: model, place: $0).environment(\.glassControls, glass) }
         .onChange(of: isLocked) { _, locked in
             if locked { pairing = false }
         }
@@ -65,6 +71,11 @@ struct PlacesView: View {
 
 #Preview("Places · light") {
     PlacesView(model: DemoData.previewModel()).background(Color.bg).preferredColorScheme(.light)
+}
+
+#Preview("Places · glass") {
+    PlacesView(model: DemoData.previewModel()).background(Color.bg)
+        .environment(\.glassControls, true).preferredColorScheme(.dark)
 }
 
 #Preview("Places · locked") {

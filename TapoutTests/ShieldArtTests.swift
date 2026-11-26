@@ -29,6 +29,27 @@ struct ShieldArtTests {
         try data.write(to: url)
     }
 
+    @Test func theGlassArtIsTheSameShapeAndDifferent() throws {
+        let image = try #require(ShieldOrbArt.render(glass: true))
+        #expect(image.size.width * image.scale == 600)
+        #expect(image.size.height * image.scale == 600)
+        let cg = try #require(image.cgImage)
+        #expect(try pixelAlpha(cg, x: 2, y: 2) == 0)
+        #expect(try pixelAlpha(cg, x: 300, y: 300) > 200)
+        #expect(try pixelAlpha(cg, x: 300, y: 2) == 0)
+        #expect(image.pngData() != ShieldOrbArt.render()?.pngData())
+    }
+
+    /// Writes the glass PNG when run with TEST_RUNNER_TAPOUT_EXPORT_GLASS_SHIELD_ART=1.
+    @Test func exportsTheGlassArtWhenAsked() throws {
+        guard ProcessInfo.processInfo.environment["TAPOUT_EXPORT_GLASS_SHIELD_ART"] == "1" else { return }
+        let data = try #require(ShieldOrbArt.render(glass: true)?.pngData())
+        let url = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("TapoutShield/Shield.xcassets/SealedOrbGlass.imageset/SealedOrbGlass.png")
+        try data.write(to: url)
+    }
+
     private func pixelAlpha(_ image: CGImage, x: Int, y: Int) throws -> UInt8 {
         var pixel = [UInt8](repeating: 0, count: 4)
         let context = try #require(CGContext(data: &pixel, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,

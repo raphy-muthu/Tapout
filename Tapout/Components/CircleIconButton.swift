@@ -15,8 +15,7 @@ struct CircleIconButton: View {
                 .font(.system(size: 20, weight: .medium))
                 .foregroundStyle(tint)
                 .frame(width: 44, height: 44)
-                .background(Color.surface1, in: Circle())
-                .cardShadow()
+                .controlSurface(.surface1, in: Circle())
         }
         .buttonStyle(PressScaleStyle())
         .opacity(isEnabled ? 1 : 0.45)

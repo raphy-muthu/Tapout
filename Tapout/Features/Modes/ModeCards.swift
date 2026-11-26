@@ -25,12 +25,7 @@ struct ActiveModeCard: View {
                     orb
                 }
             }
-            (large ? AnyLayout(VStackLayout(spacing: Space.xs)) : AnyLayout(HStackLayout(spacing: Space.xs))) {
-                StatTile(value: mode.schedule.map(ScheduleFormat.short) ?? "Manual", caption: "Schedule", isNumber: mode.schedule != nil)
-                StatTile(value: ModeText.unlockSummary(unlockNames), caption: "Unlocks at", isNumber: false)
-                StatTile(value: TimeFormat.short(lockedThisWeek), caption: "This week", isNumber: true)
-            }
-            .fixedSize(horizontal: false, vertical: true) // tiles share a height: Fraunces numbers are taller than SF Pro words
+            ModeStatTiles(mode: mode, unlockNames: unlockNames, lockedThisWeek: lockedThisWeek)
         }
         .card(radius: Radius.sheet)
     }
@@ -55,6 +50,24 @@ struct ActiveModeCard: View {
     }
 }
 
+/// A mode's schedule, unlock places and time this week, side by side (stacked at accessibility sizes).
+struct ModeStatTiles: View {
+    let mode: Mode
+    let unlockNames: [String]
+    let lockedThisWeek: TimeInterval
+
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    var body: some View {
+        (typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: Space.xs)) : AnyLayout(HStackLayout(spacing: Space.xs))) {
+            StatTile(value: mode.schedule.map(ScheduleFormat.short) ?? "Manual", caption: "Schedule", isNumber: mode.schedule != nil)
+            StatTile(value: ModeText.unlockSummary(unlockNames), caption: "Unlocks at", isNumber: false)
+            StatTile(value: TimeFormat.short(lockedThisWeek), caption: "This week", isNumber: true)
+        }
+        .fixedSize(horizontal: false, vertical: true) // tiles share a height: Fraunces numbers are taller than SF Pro words
+    }
+}
+
 /// A small value-over-caption tile inside a card.
 struct StatTile: View {
     let value: String
@@ -63,6 +76,7 @@ struct StatTile: View {
     let isNumber: Bool
 
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.glassControls) private var glass
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
@@ -72,11 +86,13 @@ struct StatTile: View {
                 .lineLimit(typeSize.isAccessibilitySize ? nil : 1)
                 .minimumScaleFactor(0.7)
             Spacer(minLength: 0) // captions bottom-align across tiles whose values differ in height
-            Text(caption).font(.caption).foregroundStyle(Color.inkTertiary)
+            Text(caption).font(.caption).foregroundStyle(glass ? Color.inkSecondary : Color.inkTertiary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(Space.sm)
-        .background(Color.surface2, in: RoundedRectangle(cornerRadius: Radius.inner, style: .continuous))
+        // On glass a wash of ink, which stays visible over the pane in both themes.
+        .background(glass ? Color.ink.opacity(0.07) : Color.surface2,
+                    in: RoundedRectangle(cornerRadius: Radius.inner, style: .continuous))
         .accessibilityElement(children: .combine)
     }
 }

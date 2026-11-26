@@ -65,7 +65,7 @@ struct TimerSheet: View {
                 } else {
                     VStack(spacing: Space.xs) {
                         Text(TimeFormat.length(duration))
-                            .font(.numberDisplay)
+                            .font(.numberReadout)
                             .foregroundStyle(Color.ink)
                             .multilineTextAlignment(.center)
                             .accessibilityLabel(TimeFormat.spokenLength(duration))

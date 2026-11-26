@@ -5,7 +5,7 @@ One ordered run on a real iPhone, merging the device steps from Phase 4A Task 9,
 ## Before you start
 
 - [ ] Xcode has profiles for TapoutShield and TapoutWidgets (Signing & Capabilities, your account signed in), and the device build exits 0.
-- [ ] The App Group `group.com.raphymuthu.tapout` is ticked on Tapout, TapoutMonitor and TapoutWidgets. TapoutShield doesn't use it.
+- [ ] The App Group `group.com.raphymuthu.tapout` is ticked on Tapout, TapoutMonitor, TapoutShield and TapoutWidgets. TapoutShield gained it in Phase 13, so open its Signing & Capabilities tab and let Xcode refresh the profile.
 - [ ] Two NFC tags (NTAG213/215/216) are to hand: one to pair, one to be rejected as unknown.
 - [ ] The Family Controls (Development) entitlement is already granted.
 - [ ] Signing is set for a Release build too, so a signing problem shows early (the Release check is in section 10).
@@ -150,7 +150,7 @@ Needs a mode with apps chosen. Allow notifications when asked. The first three a
 
 The Metal Toolchain is installed and the shader is in the build (Lab, Effects, Glass shader reads "In this build"). The glass orb has been seen on the simulator only; everything below needs the iPhone.
 
-- [ ] **Flag on.** Lab, Effects: switch "Living glass in the app" on. Home's orb is the glass one and looks like the same orb, only livelier. (9)
+- [ ] **Flag on.** Lab, Effects: switch "Living glass in the app" on. Home's orb is the glass one, stronger than the classic one, with light moving inside. (9)
 - [ ] **Tilt.** Tilt the phone: the highlight moves smoothly with it, with no jitter, and settles when you hold still. (9)
 - [ ] **Ripple on lock and unlock.** Lock and unlock: a ripple travels out from the orb each time Home shows the new state. (9)
 - [ ] **Lock moment.** With the flag on: two taps, then a soft swell, with the same sequence and no dropped frames. (9)
@@ -158,9 +158,9 @@ The Metal Toolchain is installed and the shader is in the build (Lab, Effects, G
 - [ ] **Haptics after backgrounding.** Play a haptic, send Tapout to the background for a few seconds, return and play another: nothing crashes and the haptic still plays. (9)
 - [ ] **Reduce Motion.** Settings, Accessibility, Reduce Motion on: Home shows the classic orb. Turn it off: the glass orb returns. (9)
 - [ ] **Low Power Mode.** Low Power Mode on: classic orb. Off: glass again. (9)
-- [ ] **Light appearance.** In light appearance, the glass orb matches the classic one's colors in both modes. (9)
+- [ ] **Light appearance.** In light appearance, the glass orb keeps the same slate and ember colors and reads clearly. (9)
 - [ ] **Largest Dynamic Type.** At the largest Dynamic Type, the orb shrinks as before and nothing overlaps. (9)
-- [ ] **Battery and heat.** Leave Home open on a charger-free phone for 30 minutes with the flag on, then off for 30 minutes: note the battery drop for each and whether the phone gets warm. (9)
+- [ ] **Battery and heat.** Settings → Developer Lab → Battery and heat. Unplugged, at one brightness: Start a run, close the Lab and leave Home open for an hour with the flag on, Stop; then the same with it off. Both reports show a drain figure and the worst heat; compare them. (9, 14)
 - [ ] **Flag off.** Switch the flag off: every screen is exactly as before. (9)
 
 ## 14. Phase 10: Home and the lock moment
@@ -174,6 +174,74 @@ Turn the Living glass switch on (Lab, Effects) for all of these. Seen on the sim
 - [ ] **Wheel at large text and with VoiceOver.** At an accessibility text size, and separately with VoiceOver on, the sheet shows the wheel. (10)
 - [ ] **Lock moment.** Scan a tag: one orb turns from slate to ember while the ring sweeps, one ripple goes out, the background warms. Two taps, then a soft swell. (10)
 - [ ] **Unlock haptic.** Unlock with a tag: one soft tap and a fainter echo. (10)
-- [ ] **Warmth.** On Home, locked and unlocked, the glow behind the orb is soft and wider than the orb, never a screen-wide wash, in a dark room and in daylight. (10)
+- [ ] **Warmth.** On Home, locked and unlocked, the glow is soft and the words stay readable, in a dark room and in daylight. (10)
 - [ ] **Time's up and milestone.** Both show the glass orb; Time's up warms in. (10)
 - [ ] **Switch off.** The wheel, the classic lock moment and today's haptics are back. (10)
+
+## 15. Phase 10b: Home boost
+
+Living glass switch on. Seen on the simulator only so far.
+
+- [ ] **Look.** Home has the stronger glass orb with light moving inside, a breathing glow filling the screen, and frosted controls and tab bar. (10b)
+- [ ] **Tap the orb.** Unlocked: a ripple, a bounce and a tick. Locked: tapping it still starts a scan. (10b)
+- [ ] **Lock bloom.** Scan a tag: ember light spreads from the orb across the screen and settles into the locked glow with no jump. (10b)
+- [ ] **Smooth and legible.** Scrolling intentions, switching tabs and the countdown stay smooth; small text is readable on the glow in light and dark, indoors and in daylight. (10b)
+- [ ] **Battery and heat with the boost.** The runs in section 13 cover this build, which includes the glow and frosted controls. If you ran them on an earlier build, run them again. (10b)
+- [ ] **Switch off.** Home looks exactly as it did before. (10b)
+
+## 16. Phase 11: Insights
+
+Living glass switch on. Seen on the simulator only so far.
+
+- [ ] **Look.** Insights has the glow behind it, frosted cards, seven glass columns, a five-week heatmap and a streak tile. (11)
+- [ ] **Scrub the chart.** Drag sideways across the columns: one column lifts and glows under your thumb, the big number and title follow, one light tick per day. It stays on release; tapping it again returns to the week. Days after today don't select. (11)
+- [ ] **Scroll over the charts.** Swipe up and down starting on the columns, then on the heatmap: the page scrolls every time and no day is picked by accident. (11)
+- [ ] **Heatmap.** Tap days and drag along a week: the outline and the line underneath follow. Days before your first lock and after today are faint and don't select. The colors match how much you locked. (11)
+- [ ] **Streak and tiles.** The streak and the other tiles match your real history. (11)
+- [ ] **Share.** Share the week: the image has the glass columns and looks right in Photos and in Instagram Stories. (11)
+- [ ] **VoiceOver.** The chart reads as one adjustable item and swiping up or down moves a day; on the heatmap only days with time are read. (11)
+- [ ] **Reduce Motion.** Columns appear without rising or lifting; the glow holds still. (11)
+- [ ] **Light, large text, daylight.** Everything reads in light appearance, at your largest text size, and outdoors. (11)
+- [ ] **Smooth.** Scrolling and scrubbing stay smooth on the phone. (11)
+- [ ] **Switch off.** Insights looks exactly as it did before. (11)
+
+## 17. Phase 12: Modes, Places and onboarding
+
+Living glass switch on. Seen on the simulator only so far.
+
+- [ ] **Modes drawers.** Modes is one column of glass cards with the selected mode first and open. Tapping another card opens it and closes the last; tapping the open one closes it, with one light tick each time. (12)
+- [ ] **Use this mode.** It moves the ember orb and "Selected" to that card without the cards jumping, and Home shows the new mode. While locked it is dimmed and Edit reads View. (12)
+- [ ] **Tilt and scroll.** Rest a finger on a card: it leans under your finger and settles when you lift. Swipe up and down starting on cards: the page scrolls every time and nothing opens by accident. Quick and slow taps both work. (12)
+- [ ] **Editor.** Edit grows out of its card and goes back into it on Cancel, Save and swipe down. Delete a mode you don't need: the screen closes cleanly. Scroll straight after closing the editor. (12)
+- [ ] **Places.** The default place has a live orb that tilts with the phone and ripples when tapped; tapping the name opens the place. The other tiles open their places. (12)
+- [ ] **Pair a real tag.** The orb ripples while waiting and stays visible above the system's scan sheet; on a read it turns ember, the ring closes, you feel two taps, and Name this Tag appears. Try an already paired tag: a still slate orb with the message. (12)
+- [ ] **Preview onboarding.** Settings → Developer Lab → Preview onboarding: one orb moves through all six steps, the ring grows a sixth each step, and after Save place it turns ember with "Paired" and closes. Your own modes, apps, places and schedules are unchanged afterwards. (12)
+- [ ] **VoiceOver.** A mode card says its name and Open or Closed; Edit says which mode; the days read as one item. The default place reads as one button. (12)
+- [ ] **Reduce Motion.** The orbs are the classic still ones, drawers open at once, onboarding's steps crossfade, and nothing tilts, slides or resizes. (12, 14)
+- [ ] **Light, large text, daylight.** Modes, Places, pairing and onboarding read in light appearance, at your largest text size, and outdoors. (12)
+- [ ] **Smooth and cool.** Opening drawers, scrolling and onboarding stay smooth, and the phone doesn't warm up with Places left open for a few minutes. (12)
+- [ ] **Switch off.** Modes, Places and pairing look exactly as they did before. (12)
+
+## 18. Phase 13: widgets, Live Activity and shield
+
+Living glass switch on. Widgets and the Live Activity seen on the simulator only; the shield has not been seen on any device.
+
+- [ ] **Signing.** The signed install succeeds with TapoutShield's new App Group, and the blocked-app screen still appears. (13)
+- [ ] **Turn the switch on, then look.** After toggling the switch in the Lab, Home Screen widgets turn flat ember (locked) or slate (unlocked) within a few seconds, and a running Live Activity changes with them. (13)
+- [ ] **Widgets through a day.** Locked counts up, a timer counts down under "Time left", a pass reads "Relocks in" on slate, unlocked shows today's total; the medium widget's week matches Insights. (13)
+- [ ] **Closed-app changes.** A schedule or timer that locks or unlocks while Tapout is closed repaints the widgets. (13)
+- [ ] **Lock Screen widgets.** The circular and rectangular widgets are bolder and nothing is cut off, including a lock of more than ten hours. (13)
+- [ ] **Live Activity.** The Lock Screen card is flat ember with a big number and fits without clipping, through lock, pass and Time's up. (13)
+- [ ] **Dynamic Island.** Compact shows the flat lock disc and the time; long press shows the ember block; a second app's activity shows the minimal disc. (13)
+- [ ] **StandBy and tinted.** In StandBy and with a tinted or clear Home Screen, every number is readable. (13)
+- [ ] **Shield.** A blocked app shows the glass orb. With the switch off it shows the classic orb again (iOS may take a new lock, or a few minutes, to ask again). (13)
+- [ ] **Daylight.** Near-black text on ember and slate reads outdoors. (13)
+- [ ] **Switch off.** Widgets, the Live Activity and the shield look exactly as they did before. (13)
+
+## 19. Phase 14: polish
+
+- [ ] **Battery runs.** Besides Home (section 13), do an hour each, switch on, of Places left open and a locked Home. Tap Copy report and send the text. (14)
+- [ ] **Battery meter.** A run keeps the screen awake, continues after you close the Lab, and the report says if you charged, used Low Power Mode, switched the look or left Tapout. Saved runs are still there after closing Tapout. (14)
+- [ ] **Largest text.** At your largest text size, the numbers on mode cards grow with the words, and the mode pill, suggestion chips, Scan, Timer, Save place, Share and Make default keep space around their labels. Home's "phone-free today" line is complete (the orb gets smaller). Timer length, onboarding's time ranges, Insights tiles and chart labels, and Settings grow too; the week chart stays on screen; "Emergency passes", "Afternoons" and "0 apps" don't break mid-word; onboarding's first, Screen Time and pairing steps and the rejected-tag screen show their words without scrolling. Switch off too: this change ships. (14)
+- [ ] **VoiceOver walk.** With VoiceOver on, switch on, swipe through Home, lock and unlock, every tab, a mode's drawer and editor, pairing and the onboarding preview: everything is announced in a sensible order and every control can be activated. (14)
+- [ ] **Reduce Motion walk.** The same tour with Reduce Motion on: nothing slides, grows or sweeps; the glow and orbs hold still. (14)

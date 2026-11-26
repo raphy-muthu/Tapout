@@ -8,6 +8,7 @@ struct PlaceSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.isLocked) private var isLocked
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.glassControls) private var glass
     @State private var name: String
     @State private var confirmingRemove = false
 
@@ -71,9 +72,11 @@ struct PlaceSheet: View {
                     Text("Make default")
                         .font(.tBody)
                         .foregroundStyle(Color.ink)
+                        .padding(.vertical, Space.xs)
                         .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
                         .padding(.horizontal, 20)
-                        .background(Color.surface2, in: RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
+                        .controlSurface(.surface2, in: RoundedRectangle(cornerRadius: Radius.card, style: .continuous),
+                                        shadowed: false)
                 }
                 .buttonStyle(PressScaleStyle())
             }
@@ -96,7 +99,13 @@ struct PlaceSheet: View {
         // Full height at accessibility sizes; a medium sheet can't hold the name and both actions.
         .presentationDetents(typeSize.isAccessibilitySize ? [.large] : [.medium])
         .presentationCornerRadius(Radius.sheet)
-        .presentationBackground(Color.surface1)
+        .presentationBackground {
+            if glass {
+                GlassPageBackground(tone: isLocked ? .ember : .slate, isOn: true)
+            } else {
+                Color.surface1
+            }
+        }
         .confirmationDialog("Remove \(place.name)?", isPresented: $confirmingRemove, titleVisibility: .visible) {
             Button("Remove", role: .destructive) {
                 guard !isLocked else { return }

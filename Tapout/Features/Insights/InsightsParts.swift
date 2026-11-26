@@ -22,7 +22,9 @@ struct ComparisonCard: View {
                 .font(.tTitle)
                 .foregroundStyle(Color.ink)
         }
-        .card(padding: 20)
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .controlSurface(.surface1, in: RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
     }
 }
 
@@ -37,10 +39,12 @@ struct WeekBars: View {
                 ForEach(days, id: \.start) { day in
                     VStack(spacing: 6) {
                         Text(TimeFormat.short(day.lockedTime))
-                            .font(.system(size: 12).monospacedDigit())
+                            .font(.caption.monospacedDigit()) // 12pt at the default size
                             .foregroundStyle(Color.inkTertiary)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
+                            // Only today's shows, so it may be wider than its column. As large as the chart has room for.
+                            .fixedSize()
+                            .frame(minWidth: 0, maxWidth: .infinity) // the label overflows; the column doesn't widen
+                            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
                             .opacity(day.isToday ? 1 : 0)
                         RoundedRectangle(cornerRadius: 10, style: .continuous)
                             .fill(day.isToday ? Color.ember : Color.surface2)
@@ -61,11 +65,11 @@ struct WeekBars: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Phone-free time per day this week")
-        .accessibilityValue(spokenDays)
+        .accessibilityValue(Self.spoken(days))
     }
 
     /// Only days with time on them, so future and empty days aren't read out like misses.
-    private var spokenDays: String {
+    static func spoken(_ days: [Insights.Day]) -> String {
         let locked = days.filter { $0.lockedTime >= 60 }
         guard !locked.isEmpty else { return "No locks yet" }
         return locked.map { "\($0.start.formatted(.dateTime.weekday(.wide))), \(TimeFormat.spoken($0.lockedTime))" }
@@ -82,6 +86,8 @@ struct InsightTile: View {
     /// For VoiceOver, when `value` is abbreviated ("1h 50m").
     var spokenValue: String? = nil
 
+    @Environment(\.glassControls) private var glass
+
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(value)
@@ -91,13 +97,13 @@ struct InsightTile: View {
                 .minimumScaleFactor(0.6)
             Text(caption)
                 .font(.tFootnote)
-                .foregroundStyle(Color.inkTertiary)
+                // A step stronger on glass, where the glow lifts the background.
+                .foregroundStyle(glass ? Color.inkSecondary : Color.inkTertiary)
         }
         .padding(.vertical, Space.md)
         .padding(.horizontal, 20)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(Color.surface1, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .cardShadow()
+        .controlSurface(.surface1, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(spokenValue ?? value) \(caption)")
     }

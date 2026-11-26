@@ -36,13 +36,12 @@ struct HomeHeader: View {
                     .font(.system(size: 20))
                     .foregroundStyle(Color.inkSecondary)
                     .frame(width: 44, height: 44)
-                    .background(Color.surface1, in: Circle())
-                    .cardShadow()
+                    .controlSurface(.surface1, in: Circle())
             }
             .buttonStyle(PressScaleStyle())
             .accessibilityLabel("Settings")
         }
-        .frame(height: 44)
+        .frame(minHeight: 44)
     }
 
     private var pill: some View {
@@ -58,9 +57,9 @@ struct HomeHeader: View {
         .foregroundStyle(showsLockGlyph ? Color.emberInk : Color.ink)
         .padding(.leading, 14)
         .padding(.trailing, Space.md)
-        .frame(height: 44)
-        .background(Color.surface1, in: Capsule(style: .continuous))
-        .cardShadow()
+        .padding(.vertical, Space.xxs) // grows with a large mode name instead of letting it spill out
+        .frame(minHeight: 44)
+        .controlSurface(.surface1, in: Capsule(style: .continuous))
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Mode: \(activeMode.name)")
     }
