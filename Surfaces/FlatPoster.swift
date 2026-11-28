@@ -27,9 +27,14 @@ struct FlatPoster: Equatable {
         } else if state.openUntil != nil && !isStale {
             FlatPoster(tone: .slate, heading: "Open · Relocks in", footer: state.modeName)
         } else {
-            FlatPoster(tone: .ember, heading: "\(state.modeName) · \(state.timerEndsAt == nil ? "Locked" : "Time left")",
+            FlatPoster(tone: .ember, heading: "\(state.modeName) · \(heading(state, isStale: isStale))",
                        footer: state.placeName)
         }
+    }
+
+    private static func heading(_ state: LockActivityAttributes.ContentState, isStale: Bool) -> String {
+        if state.showsEndTime(isStale: isStale) { return "Ends at" }
+        return state.timerEnd(isStale: isStale) == nil ? "Locked" : "Time left"
     }
 
     /// A still total as lines, hours over minutes: "1h", "45m".

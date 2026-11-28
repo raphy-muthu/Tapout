@@ -42,7 +42,7 @@ struct TimerLockTests {
 
     // MARK: Due rule
 
-    @Test func isDueFollowsTheEmergencyRelockRule() {
+    @Test func isDueAtTheEndByTheWallClock() {
         #expect(!timer.isDue(now: Self.start, early: 0))
         #expect(!timer.isDue(now: timer.endsAt - 1, early: 0))
         #expect(timer.isDue(now: timer.endsAt, early: 0))
@@ -52,9 +52,11 @@ struct TimerLockTests {
         #expect(timer.isDue(now: timer.endsAt - 30, early: TimerLock.earlyTolerance))
     }
 
-    @Test func isDueWhenTheClockWasSetBackPastTheDuration() {
-        #expect(timer.isDue(now: Self.start - 60, early: 0))
-        #expect(timer.isDue(now: timer.endsAt - timer.duration - 1, early: 0))
+    /// Ending a timer opens apps, so a clock set back before the start keeps the lock (it used to end it).
+    @Test func aClockSetBackNeverEndsTheTimer() {
+        #expect(!timer.isDue(now: Self.start - 60, early: 0))
+        #expect(!timer.isDue(now: timer.endsAt - timer.duration - 1, early: 0))
+        #expect(!timer.isDue(now: Self.start - 86_400, early: TimerLock.earlyTolerance))
     }
 
     @Test func earlyToleranceMatchesTheEmergencyRelock() {

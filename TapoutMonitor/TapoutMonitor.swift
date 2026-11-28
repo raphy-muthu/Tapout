@@ -25,7 +25,7 @@ final class TapoutMonitor: DeviceActivityMonitor {
         let line = ScheduledLock.run(modeID: modeID, store: store, shields: ShieldController(),
                                      notifier: LocalNotifier(), now: now,
                                      accessApproved: ScheduledLock.accessApproved(live: live, mirrored: mirrored),
-                                     accessReadout: readout)
+                                     accessReadout: readout, clock: ClockAnchor.current())
         log(line, store, now)
         WidgetCenter.shared.reloadAllTimelines()
     }
@@ -34,6 +34,13 @@ final class TapoutMonitor: DeviceActivityMonitor {
         super.intervalWillEndWarning(for: activity)
         if activity == TimerPlan.activity { return endTimer(callback: "intervalWillEndWarning") }
         relock(activity, callback: "intervalWillEndWarning")
+    }
+
+    /// The shielded apps were used for a pass's length: whatever the clock says, the pass is over.
+    override func eventDidReachThreshold(_ event: DeviceActivityEvent.Name, activity: DeviceActivityName) {
+        super.eventDidReachThreshold(event, activity: activity)
+        guard event == RelockPlan.usageEvent else { return }
+        relock(activity, callback: "eventDidReachThreshold")
     }
 
     override func intervalDidEnd(for activity: DeviceActivityName) {
@@ -60,8 +67,9 @@ final class TapoutMonitor: DeviceActivityMonitor {
         ScheduledLock.accessApproved(live: liveAccess, mirrored: store.screenTimeApproved)
     }
 
+    /// Lines can hold a mode's name, so they stay private in the system log.
     private func log(_ line: String, _ store: SharedStore, _ now: Date) {
-        Self.logger.info("\(line, privacy: .public) at \(now.formatted(date: .omitted, time: .standard), privacy: .public)")
+        Self.logger.info("\(line, privacy: .private) at \(now.formatted(date: .omitted, time: .standard), privacy: .public)")
         store.appendLog(line, source: .monitor, at: now)
     }
 
@@ -71,18 +79,46 @@ final class TapoutMonitor: DeviceActivityMonitor {
         guard activity == RelockPlan.activity else { return }
         let store = SharedStore.appGroup()
         let now = Date()
+        let clock = ClockAnchor.current()
         let run = TimerLock.runMonitorRelock(store: store, shields: ShieldController(), notifier: LocalNotifier(), now: now,
-                                             accessApproved: Self.accessApproved(store))
+                                             accessApproved: Self.accessApproved(store), clock: clock)
         for line in run.lines { log("\(callback): \(line)", store, now) }
+        rearmIfClockMoved(store, now: now, clock: clock)
         if run.changed { WidgetCenter.shared.reloadAllTimelines() }
+    }
+
+    /// A callback booked in wall-clock time came early or late because the date, time or time zone moved:
+    /// books the end again at the real end, so a timer or pass still ends on time.
+    private func rearmIfClockMoved(_ store: SharedStore, now: Date, clock: ClockAnchor?) {
+        if let timer = store.timerLock,
+           let target = ClockRearm.target(wallEnd: timer.endsAt, realRemaining: timer.realRemaining(clock: clock), now: now) {
+            rearm(RelockScheduler(activity: TimerPlan.activity), "timer", target: target, store: store, now: now)
+        }
+        if case .emergency(let relockAt, _) = store.session,
+           let target = ClockRearm.target(wallEnd: relockAt,
+                                          realRemaining: EmergencyRelock.realRemaining(store: store, clock: clock), now: now) {
+            rearm(RelockScheduler(usage: { SharedStore.appGroup().activeShieldPlan }), "pass", target: target,
+                  store: store, now: now)
+        }
+    }
+
+    private func rearm(_ scheduler: RelockScheduler, _ what: String, target: Date, store: SharedStore, now: Date) {
+        do {
+            try scheduler.schedule(relockAt: target, now: now, strategy: store.relockStrategy)
+            log("Clock changed: \(what) end moved to \(target.formatted(date: .omitted, time: .standard))", store, now)
+        } catch {
+            log("Clock changed: could not move the \(what) end: \(error)", store, now)
+        }
     }
 
     private func endTimer(callback: String) {
         let store = SharedStore.appGroup()
         let now = Date()
+        let clock = ClockAnchor.current()
         let line = TimerLock.runMonitorEnd(store: store, shields: ShieldController(), notifier: LocalNotifier(), now: now,
-                                           accessApproved: Self.accessApproved(store))
+                                           accessApproved: Self.accessApproved(store), clock: clock)
         log("\(callback): \(line)", store, now)
+        rearmIfClockMoved(store, now: now, clock: clock)
         WidgetCenter.shared.reloadAllTimelines()
     }
 }

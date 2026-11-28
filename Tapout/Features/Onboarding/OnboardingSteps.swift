@@ -174,7 +174,7 @@ struct FocusTimeStep: View {
         VStack(alignment: .leading, spacing: Space.lg) {
             VStack(alignment: .leading, spacing: Space.xs) {
                 Text("When should it lock?").font(.tLargeTitle).foregroundStyle(Color.ink)
-                Text("It locks on its own. Tap a tag to open early.")
+                Text("It locks on its own, until you tap a tag.")
                     .font(.tBody)
                     .foregroundStyle(Color.inkSecondary)
             }

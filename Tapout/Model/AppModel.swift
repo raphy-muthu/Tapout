@@ -10,6 +10,10 @@ final class AppModel {
     enum PairResult: Equatable {
         case paired
         case alreadyPaired(name: String)
+        /// The tag's ID changes each time it is read (or is empty), so it could never unlock.
+        case unstableTag
+        /// Places can't change during a lock.
+        case locked
     }
 
     /// The one mode a fresh install starts with.
@@ -46,7 +50,8 @@ final class AppModel {
     /// Re-reads the store. Seeds the starter mode when there are none, so `activeMode` always exists.
     /// If the seed can't be written, the starter lives in memory until the next successful save.
     func reload() {
-        if store.modes.isEmpty {
+        // Seed only when nothing is stored: a damaged list is kept (and backed up by the store) rather than replaced.
+        if !store.hasStoredModes, store.modes.isEmpty {
             let starter = Mode(name: Self.starterModeName)
             store.modes = [starter]
             store.activeModeID = starter.id
@@ -109,8 +114,13 @@ final class AppModel {
         if store.screenTimeApproved != approved { store.screenTimeApproved = approved }
     }
 
-    /// Adds the mode, or replaces the stored one with the same id.
+    /// Whether the stored lock state is locked (a pass counts). Modes, places and always-allowed apps are read-only
+    /// then. The screens enforce it too, but the model must not rely on a view that may be a moment stale.
+    var isLockedInStore: Bool { store.session != .unlocked }
+
+    /// Adds the mode, or replaces the stored one with the same id. Does nothing during a lock.
     func save(_ mode: Mode) {
+        guard !isLockedInStore else { return }
         var mode = mode
         mode.name = Self.cleaned(mode.name, fallback: "Mode")
         let previous = store.modes.first { $0.id == mode.id }?.schedule
@@ -130,6 +140,7 @@ final class AppModel {
     /// Refuses to delete the last mode. Deleting the active mode makes the first remaining one active.
     @discardableResult
     func deleteMode(id: UUID) -> Bool {
+        guard !isLockedInStore else { return false }
         var all = store.modes
         guard all.count > 1, all.contains(where: { $0.id == id }) else { return false }
         all.removeAll { $0.id == id }
@@ -162,7 +173,7 @@ final class AppModel {
     }
 
     func setActiveMode(_ id: UUID) {
-        guard modes.contains(where: { $0.id == id }) else { return }
+        guard !isLockedInStore, modes.contains(where: { $0.id == id }) else { return }
         store.activeModeID = id
         reload()
     }
@@ -190,6 +201,8 @@ final class AppModel {
     /// Only call while unlocked; the screens enforce that. The first place becomes the default.
     @discardableResult
     func pair(_ uid: TagUID, name: String) -> PairResult {
+        guard !isLockedInStore else { return .locked }
+        guard uid.isStable else { return .unstableTag }
         if let existing = store.pairedTags.first(where: { $0.uid == uid }) {
             return .alreadyPaired(name: existing.name)
         }
@@ -213,6 +226,7 @@ final class AppModel {
 
     /// Forgets the place everywhere. Modes that unlocked only there unlock at any place.
     func removePlace(_ uid: TagUID) {
+        guard !isLockedInStore else { return }
         store.pairedTags.removeAll { $0.uid == uid }
         store.modes = store.modes.map { mode in
             var mode = mode
@@ -236,6 +250,7 @@ final class AppModel {
     // MARK: Always allowed
 
     func updateAlwaysAllowed(_ selection: FamilyActivitySelection) {
+        guard !isLockedInStore else { return }
         store.alwaysAllowed = selection
         reload()
     }
@@ -254,9 +269,13 @@ final class AppModel {
     static let intentionLimit = 40
 
     /// Whether `uid` may lock (while unlocked) or unlock the active mode (while locked).
+    /// Reads the store, not this model's copy: the monitor may have changed the active mode (a timer handing over
+    /// to a schedule) since the last reload, and the decision must use the mode that is locked now.
     func check(_ uid: TagUID, unlocking: Bool) -> TagCheck {
-        guard let place = places.first(where: { $0.uid == uid }) else { return .unknown }
-        let allowed = activeMode.unlockPlaces
+        guard let place = store.pairedTags.first(where: { $0.uid == uid }) else { return .unknown }
+        let stored = store.modes
+        let mode = stored.first { $0.id == store.activeModeID } ?? stored.first
+        let allowed = mode?.unlockPlaces ?? activeMode.unlockPlaces
         if unlocking, !allowed.isEmpty, !allowed.contains(uid) { return .wrongPlace(place) }
         return .accepted(place)
     }
@@ -269,6 +288,14 @@ final class AppModel {
 
     /// Whether the active mode blocks anything, with the always-allowed apps taken out. A timer lock needs it.
     var activeModeHasApps: Bool { !store.activeShieldPlan.isEmpty }
+
+    /// Whether the running timer will end into a mode's scheduled lock (its window is running at the end), so the
+    /// Live Activity keeps reading locked after the timer's end.
+    var timerHandsOverToSchedule: Bool {
+        guard let timer = store.timerLock else { return false }
+        return ScheduledLock.handover(store: store, now: timer.endsAt,
+                                      accessApproved: store.screenTimeApproved ?? true) != nil
+    }
 
     /// What the Live Activity and the widgets show now, from the same store they read.
     func lockSnapshot(at date: Date) -> LockSnapshot {

@@ -49,8 +49,9 @@ final class SharedStore {
         self.defaults = defaults
     }
 
+    /// A damaged value reads as locked: shields stay on, and a tag (or a pass) still opens it.
     var session: LockSession {
-        get { read(.session, absent: .unlocked, corrupt: .unlocked) }
+        get { read(.session, absent: .unlocked, corrupt: .locked(since: Date())) }
         set { write(newValue, .session) }
     }
 
@@ -68,6 +69,9 @@ final class SharedStore {
         get { read(.relockStrategy, absent: .warning, corrupt: .warning) }
         set { write(newValue, .relockStrategy) }
     }
+
+    /// Whether a modes value is stored at all, readable or not. A damaged one must not be replaced by a starter.
+    var hasStoredModes: Bool { defaults.data(forKey: Key.modes.rawValue) != nil }
 
     /// Every mode the owner has made. `AppModel` keeps at least one.
     var modes: [Mode] {
@@ -174,14 +178,30 @@ final class SharedStore {
         set { write(newValue, .lastClosedTimerStart) }
     }
 
-    var log: [LogEntry] {
-        read(.log, absent: [], corrupt: [])
+    /// The monotonic clock when the open emergency pass was used, so the pass ends on real time (`ClockAnchor`).
+    var passAnchor: ClockAnchor? {
+        get { read(.passAnchor, absent: nil, corrupt: nil) }
+        set { write(newValue, .passAnchor) }
     }
 
+    var log: [LogEntry] {
+        #if DEBUG
+        read(.log, absent: [], corrupt: [])
+        #else
+        []
+        #endif
+    }
+
+    /// The Lab's log. Debug builds only: a Release build keeps no record of what the owner did, and removes
+    /// one an earlier build left.
     func appendLog(_ message: String, source: LogEntry.Source, at date: Date = .now) {
+        #if DEBUG
         var entries = log
         entries.append(LogEntry(date: date, source: source, message: message))
         write(Array(entries.suffix(Self.logLimit)), .log)
+        #else
+        clearLog()
+        #endif
     }
 
     func clearLog() {
@@ -193,7 +213,7 @@ final class SharedStore {
         case modes, activeModeID, activeModeName, defaultPlace, lockHistory, alwaysAllowed
         case currentIntention, interests, seenMilestones
         case lastUnlockAt, scheduleSavedAt, registeredSchedules, screenTimeApproved
-        case timerLock, finishedTimer, finishedTimerHandover, lastClosedTimerStart
+        case timerLock, finishedTimer, finishedTimerHandover, lastClosedTimerStart, passAnchor
     }
 
     /// `absent` when nothing was ever stored. `corrupt` when data is there but won't decode;

@@ -62,6 +62,15 @@ enum ModeActivity {
     /// How many modes have a schedule that could run, before the `limit` cut.
     static func runnableCount(in modes: [Mode]) -> Int { wanted(modes).count }
 
+    /// Whether saving `mode` (new, or replacing the stored one with its id) keeps the runnable schedules within
+    /// `limit`. Past the limit a schedule would be saved but never lock. A save that doesn't add a schedule is
+    /// always allowed, so modes saved before this check still save.
+    static func fits(_ mode: Mode, in modes: [Mode]) -> Bool {
+        var all = modes
+        if let index = all.firstIndex(where: { $0.id == mode.id }) { all[index] = mode } else { all.append(mode) }
+        return runnableCount(in: all) <= max(limit, runnableCount(in: modes))
+    }
+
     /// The activities the modes need: runnable schedules only, in mode order, at most `limit`.
     static func plan(for modes: [Mode]) -> [(name: DeviceActivityName, schedule: ModeSchedule)] {
         Array(wanted(modes).prefix(limit))

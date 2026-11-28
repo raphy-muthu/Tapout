@@ -64,10 +64,12 @@ enum ScheduledLock {
         else { return (.skipQuietly("not a scheduled day"), nil) }
         let start = window.start
         if !ignoresLock, store.session != .unlocked { return (.skipQuietly("already locked"), start) }
-        if let unlocked = store.lastUnlockAt, unlocked >= window.start {
+        // A time after now was written under a clock that was later moved back; it can't hold off a lock.
+        let latest = now + earlyTolerance
+        if let unlocked = store.lastUnlockAt, unlocked >= window.start, unlocked <= latest {
             return (.skipQuietly("unlocked during this window"), start)
         }
-        if let saved = store.scheduleSavedAt[mode.id.uuidString], saved > window.start {
+        if let saved = store.scheduleSavedAt[mode.id.uuidString], saved > window.start, saved <= latest {
             return (.skipQuietly("saved during this window"), start)
         }
         guard accessApproved else { return (.skip(.noAccess, mode), start) }
@@ -113,9 +115,9 @@ enum ScheduledLock {
     /// schedule must not overwrite that lock's mode. Returns false, writing nothing, when already locked.
     /// A stale timer left in the store is settled first, so the schedule's lock is never ended as the timer.
     @discardableResult
-    static func start(_ mode: Mode, store: SharedStore, shields: some Shielding, now: Date) -> Bool {
+    static func start(_ mode: Mode, store: SharedStore, shields: some Shielding, now: Date, clock: ClockAnchor? = nil) -> Bool {
         guard store.session == .unlocked else { return false }
-        TimerLock.settleStale(store: store, now: now)
+        TimerLock.settleStale(store: store, now: now, clock: clock)
         store.activeModeID = mode.id
         store.activeModeName = mode.name
         store.session = .locked(since: now)
@@ -138,7 +140,8 @@ enum ScheduledLock {
         hasApps: ((Mode) -> Bool)? = nil,
         hasTag: Bool? = nil,
         accessReadout: String? = nil,
-        calendar: Calendar = .current
+        calendar: Calendar = .current,
+        clock: ClockAnchor? = nil
     ) -> String {
         let mode = store.modes.first { $0.id == modeID }
         let readout = accessReadout.map { " (\($0))" } ?? ""
@@ -146,7 +149,7 @@ enum ScheduledLock {
         switch decide(mode: mode, store: store, now: now, accessApproved: accessApproved, hasApps: appsChosen,
                           hasTag: hasTag ?? !store.pairedTags.isEmpty, calendar: calendar) {
         case .lock(let mode):
-            guard start(mode, store: store, shields: shields, now: now) else {
+            guard start(mode, store: store, shields: shields, now: now, clock: clock) else {
                 return "Schedule skipped: already locked"
             }
             let notice = ScheduleNotice.locked(mode)

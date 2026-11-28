@@ -37,7 +37,11 @@ final class HapticEngine {
         made.resetHandler = { @Sendable [weak self] in
             Task { @MainActor in self?.restart() }
         }
-        made.stoppedHandler = { @Sendable [weak self] _ in
+        // iOS stops the engine when it has been idle a while, so it doesn't keep running (and using power) between
+        // haptics; the next player starts it again. Only a real stop drops it.
+        made.isAutoShutdownEnabled = true
+        made.stoppedHandler = { @Sendable [weak self] reason in
+            guard reason != .idleTimeout else { return }
             Task { @MainActor in self?.engine = nil }
         }
         try made.start()

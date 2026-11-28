@@ -68,8 +68,10 @@ enum Insights {
             guard let start = calendar.date(byAdding: .day, value: offset, to: week.start),
                   let day = calendar.dateInterval(of: .day, for: start) else { return nil }
             let weekday = calendar.component(.weekday, from: start)
+            // The day's own start: where midnight is skipped by a daylight-saving change, adding days to the
+            // week's start lands at 01:00, and later days would drift.
             return Day(
-                start: start,
+                start: day.start,
                 letter: calendar.veryShortWeekdaySymbols[weekday - 1],
                 lockedTime: lockedTime(in: day, history: history, now: now),
                 isToday: calendar.isDate(start, inSameDayAs: now)
@@ -115,16 +117,15 @@ enum Insights {
     /// so it never reads zero first thing in the morning.
     static func streak(history: [LockRecord], now: Date, calendar: Calendar) -> Int {
         let days = Set(history.filter { $0.end != nil }.map { calendar.startOfDay(for: $0.start) })
+        // Steps back through each day's own start, not "minus one day", which drifts to 01:00 after a
+        // daylight-saving change at midnight and then never matches a day's start again.
+        func previous(_ day: Date) -> Date { calendar.startOfDay(for: day.addingTimeInterval(-1)) }
         var day = calendar.startOfDay(for: now)
-        if !days.contains(day) {
-            guard let yesterday = calendar.date(byAdding: .day, value: -1, to: day) else { return 0 }
-            day = yesterday
-        }
+        if !days.contains(day) { day = previous(day) }
         var count = 0
         while days.contains(day) {
             count += 1
-            guard let previous = calendar.date(byAdding: .day, value: -1, to: day) else { break }
-            day = previous
+            day = previous(day)
         }
         return count
     }

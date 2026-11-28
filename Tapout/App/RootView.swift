@@ -84,7 +84,8 @@ struct RootView: View {
                         if !keyboardUp { FloatingTabBar(active: $tab).environment(\.glassControls, livingGlass) }
                     }
                 if showingLockMoment {
-                    LockMomentView(placeName: lockPlaceName, session: engine.session, intention: model.currentIntention) {
+                    LockMomentView(placeName: lockPlaceName, session: engine.session, intention: model.currentIntention,
+                                   timer: model.timerLock) {
                         withAnimation(reduceMotion ? Motion.reveal : Motion.ui) { showingLockMoment = false }
                     }
                     .transition(.opacity)
@@ -109,7 +110,8 @@ struct RootView: View {
         .fullScreenCover(item: $cover, onDismiss: runAfterCover) { cover in
             switch cover {
             case .rejected(let rejected):
-                RejectedView(rejected: rejected, onTryAgain: { afterCover = .scan }, onPair: { afterCover = .pair })
+                RejectedView(rejected: rejected, onTryAgain: { afterCover = .scan(unlocking: rejected.locked) },
+                             onPair: { afterCover = .pair })
             case .emergencyPass:
                 EmergencyPassView(passesLeft: engine.passesLeft) {
                     do {
@@ -179,6 +181,8 @@ struct RootView: View {
         .onChange(of: screenTimeNeeded) { wasNeeded, needed in
             // The page closed: access came back, by its own button or by the check.
             if wasNeeded && !needed {
+                // The monitor reads this mirror when it can't see the authorization itself.
+                model.noteScreenTimeAccess(ScreenTimeAccess.status)
                 engine.syncShields()
                 closeFinishedTimer(heard: false)
                 model.syncSchedules()
@@ -201,7 +205,10 @@ struct RootView: View {
         .onChange(of: model.activeMode.name) { _, _ in refreshSurfaces() }
         .onChange(of: model.places.map(\.name)) { _, _ in refreshSurfaces() }
         // The foreground read of the status can be stale, so a revoke is also caught as it publishes.
-        .onReceive(AuthorizationCenter.shared.$authorizationStatus) { _ in checkScreenTime() }
+        // `@Published` sends before it stores the new value, so read it on the next main-actor turn.
+        .onReceive(AuthorizationCenter.shared.$authorizationStatus) { _ in
+            Task { @MainActor in checkScreenTime() }
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 engine.syncShields()
@@ -246,7 +253,8 @@ struct RootView: View {
     private func refreshSurfaces() {
         LivingGlassMirror.set(livingGlass)
         WidgetCenter.shared.reloadAllTimelines()
-        LiveActivityController.sync(model.lockSnapshot(at: .now), enabled: liveActivity, flat: livingGlass)
+        LiveActivityController.sync(model.lockSnapshot(at: .now), enabled: liveActivity, flat: livingGlass,
+                                    handsOver: model.timerHandsOverToSchedule)
     }
 
     @ViewBuilder
@@ -387,6 +395,8 @@ struct RootView: View {
             deferredAfterCover = waiting
             return
         }
+        engine.reload()
+        if let action, !action.stillApplies(locked: engine.session.lockState == .locked) { return }
         switch action {
         case .scan: Task { await scan() }
         case .pair: pairing = true
@@ -407,6 +417,8 @@ struct RootView: View {
     private func runDeferredAfterCover() -> Bool {
         guard let action = deferredAfterCover else { return false }
         deferredAfterCover = nil
+        engine.reload()
+        guard action.stillApplies(locked: engine.session.lockState == .locked) else { return false }
         switch action {
         case .scan: Task { await scan() }
         case .pair: pairing = true

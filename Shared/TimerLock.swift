@@ -10,6 +10,9 @@ struct TimerLock: Codable, Equatable, Sendable {
 
     let start: Date
     let duration: TimeInterval
+    /// The monotonic clock when the timer started (`ClockAnchor`). While the phone hasn't restarted, the timer
+    /// ends on real elapsed time, whatever the date and time in Settings say. nil for timers saved before it existed.
+    var anchor: ClockAnchor? = nil
 
     var endsAt: Date { start + duration }
 
@@ -24,11 +27,20 @@ struct TimerLock: Codable, Equatable, Sendable {
         return min(1, remaining(at: now) / duration)
     }
 
-    /// Same rule as `EmergencyRelock.isDue`: due a little before the end, or when the clock was set back
-    /// so far that the end is further away than the timer is long (it would otherwise stretch).
-    /// `early` is how soon before the end counts: the monitor allows `earlyTolerance`; the app waits for the exact time.
-    func isDue(now: Date, early: TimeInterval) -> Bool {
-        EmergencyRelock.isDue(relockAt: endsAt, duration: duration, now: now, early: early)
+    /// Whether the timer is over. `early` is how soon before the end counts: the monitor allows `earlyTolerance`;
+    /// the app waits for the exact time.
+    /// With `clock` (the monotonic clock now) from the same boot as `anchor`, only real elapsed time counts, so
+    /// changing the date, time or time zone neither ends nor stretches the timer. Otherwise (no anchor, or the
+    /// phone restarted) the wall clock decides, and a clock set back never ends it: ending a timer opens apps,
+    /// so a doubtful clock keeps the lock.
+    func isDue(now: Date, early: TimeInterval, clock: ClockAnchor? = nil) -> Bool {
+        if let real = anchor?.elapsed(until: clock) { return real >= duration - early }
+        return now >= endsAt - early
+    }
+
+    /// Real seconds left by the monotonic clock, or nil when it can't be compared (see `isDue`).
+    func realRemaining(clock: ClockAnchor?) -> TimeInterval? {
+        anchor?.elapsed(until: clock).map { max(0, duration - $0) }
     }
 
     /// `duration` clamped to `minimum...maximum`.
@@ -60,9 +72,10 @@ struct TimerLock: Codable, Equatable, Sendable {
         accessApproved: Bool,
         hasApps: ((Mode) -> Bool)? = nil,
         hasTag: Bool? = nil,
-        calendar: Calendar = .current
+        calendar: Calendar = .current,
+        clock: ClockAnchor? = nil
     ) -> Finish? {
-        guard let timer = store.timerLock, timer.isDue(now: now, early: early) else { return nil }
+        guard let timer = store.timerLock, timer.isDue(now: now, early: early, clock: clock) else { return nil }
         switch store.session {
         case .locked, .emergency: break
         case .unlocked: return nil
@@ -86,16 +99,19 @@ struct TimerLock: Codable, Equatable, Sendable {
     }
 
     /// Whether the app already ended or closed `timer`, so a `finishedTimer` holding it is a late write to ignore.
+    /// Matches the exact start, not "started earlier": the wall clock can move back, so a newer timer can start
+    /// before an older one did.
     static func wasClosed(_ timer: TimerLock, store: SharedStore) -> Bool {
-        store.lastClosedTimerStart.map { timer.start <= $0 } ?? false
+        store.lastClosedTimerStart == timer.start
     }
 
     /// A timer left behind an unlocked session (a crash inside `finish` or `LockEngine.unlock`). A due one that
     /// nobody has closed moves to `finishedTimer`, so its record still ends at its end; any other is dropped.
     /// Every new lock runs this first, so a stale timer never ends a lock that isn't it.
-    static func settleStale(store: SharedStore, now: Date) {
+    static func settleStale(store: SharedStore, now: Date, clock: ClockAnchor? = nil) {
         guard store.session == .unlocked, let timer = store.timerLock else { return }
-        if store.finishedTimer == nil, timer.isDue(now: now, early: earlyTolerance), !wasClosed(timer, store: store) {
+        if store.finishedTimer == nil, timer.isDue(now: now, early: earlyTolerance, clock: clock),
+           !wasClosed(timer, store: store) {
             store.finishedTimerHandover = nil
             store.finishedTimer = timer
         }
@@ -112,9 +128,10 @@ extension TimerLock {
     /// Returns the log line.
     static func runMonitorEnd(store: SharedStore, shields: some Shielding, notifier: some LockNotifying, now: Date,
                               accessApproved: Bool, hasApps: ((Mode) -> Bool)? = nil, hasTag: Bool? = nil,
-                              calendar: Calendar = .current) -> String {
+                              calendar: Calendar = .current, clock: ClockAnchor? = nil) -> String {
         if let finish = finish(store: store, shields: shields, now: now, early: earlyTolerance,
-                               accessApproved: accessApproved, hasApps: hasApps, hasTag: hasTag, calendar: calendar) {
+                               accessApproved: accessApproved, hasApps: hasApps, hasTag: hasTag, calendar: calendar,
+                               clock: clock) {
             if let mode = finish.handedOverTo {
                 let notice = ScheduleNotice.timerHandedOver(mode)
                 notifier.post(title: notice.title, body: notice.body)
@@ -132,16 +149,18 @@ extension TimerLock {
     /// Returns the log lines (the timer's only when a timer is running) and whether anything changed.
     static func runMonitorRelock(store: SharedStore, shields: some Shielding, notifier: some LockNotifying,
                                  now: Date, accessApproved: Bool, hasApps: ((Mode) -> Bool)? = nil,
-                                 hasTag: Bool? = nil, calendar: Calendar = .current) -> (lines: [String], changed: Bool) {
+                                 hasTag: Bool? = nil, calendar: Calendar = .current,
+                                 clock: ClockAnchor? = nil) -> (lines: [String], changed: Bool) {
         var lines: [String] = []
         var changed = false
         if store.timerLock != nil {
             let line = runMonitorEnd(store: store, shields: shields, notifier: notifier, now: now,
-                                     accessApproved: accessApproved, hasApps: hasApps, hasTag: hasTag, calendar: calendar)
+                                     accessApproved: accessApproved, hasApps: hasApps, hasTag: hasTag, calendar: calendar,
+                                     clock: clock)
             lines.append(line)
             changed = line.hasPrefix("timer: finished")
         }
-        if let late = EmergencyRelock.perform(store: store, shields: shields, now: now) {
+        if let late = EmergencyRelock.perform(store: store, shields: shields, now: now, clock: clock) {
             lines.append("relocked, \(Int(late))s after relock time")
             changed = true
         } else if case .emergency = store.session {

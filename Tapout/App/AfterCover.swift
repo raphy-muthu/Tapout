@@ -1,6 +1,8 @@
 /// What to do once a full-screen cover has gone, so a scan or sheet never starts while it is still leaving.
 enum AfterCover: Equatable {
-    case scan, pair, milestone
+    /// "Try again" on the rejected screen: unlock when it was shown during a lock, else lock.
+    case scan(unlocking: Bool)
+    case pair, milestone
     /// The Time's up cover closed: "Did you do it?" if the timer had an intention, else milestones.
     case timerCheck
 
@@ -11,6 +13,17 @@ enum AfterCover: Equatable {
         switch action {
         case .scan, .pair: action
         case .milestone, .timerCheck, nil: waiting
+        }
+    }
+
+    /// Whether the owner's choice still means what it did when they made it. A lock can start or end while the
+    /// cover is up (a schedule, a timer's end), and then "Try again" would do the opposite, or "Pair" would
+    /// open pairing during a lock.
+    func stillApplies(locked: Bool) -> Bool {
+        switch self {
+        case .scan(let unlocking): unlocking == locked
+        case .pair: !locked
+        case .milestone, .timerCheck: true
         }
     }
 }

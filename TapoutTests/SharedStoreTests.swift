@@ -51,11 +51,12 @@ struct SharedStoreTests {
         #expect(store.passesLeft == 0)
     }
 
-    @Test func corruptSessionReadsAsUnlocked() {
+    /// Damage must never take shields off: a session that can't be read counts as locked (a tag still opens it).
+    @Test func corruptSessionReadsAsLocked() {
         let suite = "tapout.tests.\(UUID().uuidString)"
         let store = SharedStore.makeTest(suite: suite)
         UserDefaults(suiteName: suite)!.set(Data("not json".utf8), forKey: "session")
-        #expect(store.session == .unlocked)
+        #expect(store.session.lockState == .locked)
     }
 
     @Test func logKeepsTheNewestEntries() {

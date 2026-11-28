@@ -64,7 +64,7 @@ struct PairPlaceSheet: View {
             }
         }
         .task(id: attempt) { await scan() }
-        .onChange(of: isLocked) { _, locked in
+        .onChange(of: isLocked, initial: true) { _, locked in
             if locked { dismiss() }
         }
     }
@@ -200,7 +200,10 @@ struct PairPlaceSheet: View {
         do {
             let uid = try await scanner.scan(prompt: TagScanPrompt.pair)
             guard !Task.isCancelled else { return }
-            if let existing = model.places.first(where: { $0.uid == uid }) {
+            if !uid.isStable {
+                Haptics.mismatch()
+                phase = .failed("This tag changes its ID. Use a sticker tag.")
+            } else if let existing = model.places.first(where: { $0.uid == uid }) {
                 Haptics.mismatch()
                 phase = .failed("Already paired as \(existing.name).")
             } else {
@@ -214,6 +217,10 @@ struct PairPlaceSheet: View {
             dismiss()
         } catch TagReader.ReadError.timedOut {
             phase = .failed("No tag found.")
+        } catch TagReader.ReadError.changingID {
+            phase = .failed("This tag changes its ID. Use a sticker tag.")
+        } catch TagReader.ReadError.unavailable {
+            phase = .failed("This iPhone can't read tags.")
         } catch {
             phase = .failed("Couldn't read that tag.")
         }
@@ -221,8 +228,16 @@ struct PairPlaceSheet: View {
 
     private func save(_ uid: TagUID) {
         guard !isLocked else { return }
-        if case .alreadyPaired(let existing) = model.pair(uid, name: trimmedName) {
+        switch model.pair(uid, name: trimmedName) {
+        case .paired: break
+        case .alreadyPaired(let existing):
             phase = .failed("Already paired as \(existing).")
+            return
+        case .unstableTag:
+            phase = .failed("This tag changes its ID. Use a sticker tag.")
+            return
+        case .locked:
+            dismiss()
             return
         }
         Haptics.select()

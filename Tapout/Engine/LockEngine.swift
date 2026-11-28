@@ -37,6 +37,10 @@ final class LockEngine {
     /// Whether a mode blocks anything, for a timer's hand-over to a schedule. Only tests set it (no app tokens there).
     @ObservationIgnored private let modeHasApps: ((Mode) -> Bool)?
     @ObservationIgnored private let calendar: Calendar
+    /// The monotonic clock (`ClockAnchor.current` on a phone). Tests leave it nil, so only the wall clock counts.
+    @ObservationIgnored private let clock: () -> ClockAnchor?
+    /// The wall-clock date a callback was last moved to after the clock changed, so it isn't moved again each time.
+    @ObservationIgnored private var rearmedTo: [String: Date] = [:]
 
     init(
         store: SharedStore,
@@ -46,7 +50,8 @@ final class LockEngine {
         timers: any RelockScheduling = NoRelock(),
         now: @escaping () -> Date = Date.init,
         modeHasApps: ((Mode) -> Bool)? = nil,
-        calendar: Calendar = .current
+        calendar: Calendar = .current,
+        clock: @escaping () -> ClockAnchor? = { nil }
     ) {
         self.store = store
         self.shields = shields
@@ -56,6 +61,7 @@ final class LockEngine {
         self.now = now
         self.modeHasApps = modeHasApps
         self.calendar = calendar
+        self.clock = clock
         reload()
     }
 
@@ -64,8 +70,10 @@ final class LockEngine {
         #if targetEnvironment(simulator)
         LockEngine(store: store, shields: NoShields(), relock: NoRelock(), passes: KeychainPassVault(), timers: NoRelock())
         #else
-        LockEngine(store: store, shields: ShieldController(), relock: RelockScheduler(), passes: KeychainPassVault(),
-                   timers: RelockScheduler(activity: TimerPlan.activity))
+        LockEngine(store: store, shields: ShieldController(),
+                   relock: RelockScheduler(usage: { SharedStore.appGroup().activeShieldPlan }),
+                   passes: KeychainPassVault(), timers: RelockScheduler(activity: TimerPlan.activity),
+                   clock: ClockAnchor.current)
         #endif
     }
 
@@ -110,7 +118,7 @@ final class LockEngine {
     @discardableResult
     func lock() -> Bool {
         guard store.session == .unlocked else { return false }
-        TimerLock.settleStale(store: store, now: now())
+        TimerLock.settleStale(store: store, now: now(), clock: clock())
         store.session = .locked(since: now())
         shields.apply(store.activeShieldPlan)
         record("Locked")
@@ -123,8 +131,8 @@ final class LockEngine {
     func lockTimed(duration: TimeInterval) throws -> TimerLock {
         guard store.session == .unlocked else { throw TimerError.alreadyLocked }
         let start = now()
-        TimerLock.settleStale(store: store, now: start)
-        let timer = TimerLock(start: start, duration: TimerLock.clamped(duration))
+        TimerLock.settleStale(store: store, now: start, clock: clock())
+        let timer = TimerLock(start: start, duration: TimerLock.clamped(duration), anchor: clock())
         do {
             try timers.schedule(relockAt: timer.endsAt, now: start, strategy: store.relockStrategy)
         } catch {
@@ -147,7 +155,7 @@ final class LockEngine {
     func finishTimerIfDue() -> TimerLock.Finish? {
         guard let finish = TimerLock.finish(store: store, shields: shields, now: now(), early: 0,
                                             accessApproved: store.screenTimeApproved ?? true,
-                                            hasApps: modeHasApps, calendar: calendar) else { return nil }
+                                            hasApps: modeHasApps, calendar: calendar, clock: clock()) else { return nil }
         timers.cancel()
         relock.cancel()
         timerJustFinished = finish
@@ -167,7 +175,7 @@ final class LockEngine {
     /// A crash inside `TimerLock.finish` or `unlock` can leave a timer behind an unlocked session. A due one
     /// moves to `finishedTimer` for the app to close; any other is dropped (`TimerLock.settleStale`).
     private func clearStaleTimer() {
-        TimerLock.settleStale(store: store, now: now())
+        TimerLock.settleStale(store: store, now: now(), clock: clock())
     }
 
     /// Ends the lock and any open pass. Does nothing while unlocked.
@@ -182,6 +190,7 @@ final class LockEngine {
         store.lastUnlockAt = now()
         store.session = .unlocked
         relock.cancel()
+        store.passAnchor = nil
         store.timerLock = nil
         timers.cancel()
         record("Unlocked")
@@ -195,19 +204,62 @@ final class LockEngine {
         finishTimerIfDue()
         clearStaleTimer()
         let date = now()
+        var cleared = false
         switch store.session {
         case .locked: shields.apply(store.activeShieldPlan)
-        case .unlocked: shields.clear()
+        case .unlocked:
+            shields.clear()
+            cleared = true
         case .emergency:
-            if EmergencyRelock.isDue(session: store.session, now: date, early: 0),
-               let late = EmergencyRelock.perform(store: store, shields: shields, now: date) {
-                record("Relocked in app, \(Int(late))s after relock time")
-            } else {
+            if relockIfDue(at: date) == nil {
                 shields.clear()
+                cleared = true
             }
         }
+        // The monitor may have locked between the read above and the clear: re-assert what the store now says.
+        if cleared, case .locked = store.session {
+            shields.apply(store.activeShieldPlan)
+            record("Shields re-applied: a lock landed during the sync")
+        }
+        rearmIfClockMoved(at: date)
         // Home reads the engine's copy, so it must not stay stale after a foreground sync.
         reload()
+    }
+
+    /// Relocks an open pass that is over (by the wall clock or real elapsed time). Returns seconds past the relock time.
+    private func relockIfDue(at date: Date) -> TimeInterval? {
+        let anchor = clock()
+        guard EmergencyRelock.isDue(session: store.session, now: date, early: 0,
+                                    realElapsed: EmergencyRelock.realElapsed(store: store, clock: anchor)),
+              let late = EmergencyRelock.perform(store: store, shields: shields, now: date, clock: anchor) else { return nil }
+        record("Relocked in app, \(Int(late))s after relock time")
+        return late
+    }
+
+    /// The monitor's end callbacks are booked in wall-clock time. If the date, time or time zone moved, moves them
+    /// to the real end, so a timer or pass still ends on time while Tapout is closed.
+    private func rearmIfClockMoved(at date: Date) {
+        let anchor = clock()
+        if let timer = store.timerLock,
+           let target = ClockRearm.target(wallEnd: timer.endsAt, realRemaining: timer.realRemaining(clock: anchor), now: date) {
+            rearm("timer", target: target, date: date, with: timers)
+        }
+        if case .emergency(let relockAt, _) = store.session,
+           let target = ClockRearm.target(wallEnd: relockAt,
+                                          realRemaining: EmergencyRelock.realRemaining(store: store, clock: anchor), now: date) {
+            rearm("pass", target: target, date: date, with: relock)
+        }
+    }
+
+    private func rearm(_ what: String, target: Date, date: Date, with scheduler: any RelockScheduling) {
+        if let previous = rearmedTo[what], abs(previous.timeIntervalSince(target)) <= ClockRearm.slack { return }
+        do {
+            try scheduler.schedule(relockAt: target, now: date, strategy: store.relockStrategy)
+            rearmedTo[what] = target
+            record("Clock changed: \(what) end moved to \(target.formatted(date: .omitted, time: .standard))")
+        } catch {
+            record("Clock changed: could not move the \(what) end: \(error)")
+        }
     }
 
     /// Spends one pass and opens apps for five minutes; returns the relock time. The pass is only spent
@@ -231,6 +283,8 @@ final class LockEngine {
         let saved = passes.setUsed(SharedStore.totalPasses - left)
         store.passesLeft = left
         if !saved { record("Keychain write failed") }
+        store.passAnchor = clock()
+        rearmedTo["pass"] = nil
         // Session first: if the process dies before the shields drop, the monitor still sees an open pass
         // and re-shields at the relock time.
         store.session = .emergency(relockAt: relockAt, duration: Self.emergencyDuration)
@@ -246,6 +300,7 @@ final class LockEngine {
         // The relock is cancelled last: if Tapout dies before then, the monitor still relocks.
         shields.apply(store.activeShieldPlan)
         store.session = .locked(since: now())
+        store.passAnchor = nil
         relock.cancel()
         record("Relocked early")
     }
@@ -257,11 +312,10 @@ final class LockEngine {
     func tick() -> Bool {
         finishTimerIfDue()
         clearStaleTimer()
-        let date = now()
-        if EmergencyRelock.isDue(session: store.session, now: date, early: 0),
-           let late = EmergencyRelock.perform(store: store, shields: shields, now: date) {
-            record("Relocked in app, \(Int(late))s after relock time")
-            return true
+        if relockIfDue(at: now()) != nil { return true }
+        // A lock the monitor started (or a relock) is re-asserted once, in case a sync cleared its shields.
+        if case .locked = store.session, session != store.session {
+            shields.apply(store.activeShieldPlan)
         }
         refresh()
         return false

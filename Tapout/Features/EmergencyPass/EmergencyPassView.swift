@@ -16,6 +16,10 @@ struct EmergencyPassView: View {
     @State private var holdTask: Task<Void, Never>?
     @State private var dismissTask: Task<Void, Never>?
     @State private var confirmingAccessibleUse = false
+    /// VoiceOver's path: the same 10 seconds, counted without a touch, then a confirmation.
+    @State private var accessibleTask: Task<Void, Never>?
+    /// The accessible countdown reached 10 seconds; only then can the confirmation use a pass.
+    @State private var accessibleReady = false
     /// Resets on its own when the touch ends or is cancelled by the system.
     @GestureState private var isPressed = false
 
@@ -59,6 +63,7 @@ struct EmergencyPassView: View {
         }
         .onDisappear {
             holdTask?.cancel()
+            accessibleTask?.cancel()
             dismissTask?.cancel()
         }
     }
@@ -147,12 +152,54 @@ struct EmergencyPassView: View {
         .accessibilityLabel("Hold for 10 seconds to use a pass")
         .accessibilityValue(
             countdown.isDone ? "Pass used" : passesAtOpen > 0 ? "\(countdown.secondsLeft) seconds" : "No passes left")
-        // A 10-second hold is hard with assistive tech, so VoiceOver gets an action with a confirmation instead.
+        // A 10-second hold is hard with assistive tech, so VoiceOver gets an action that counts the same 10 seconds
+        // without a touch, then asks to confirm. The wait is the point of a pass, so no path skips it.
         .accessibilityActions {
-            if canUse { Button("Use a pass") { confirmingAccessibleUse = true } }
+            if canUse {
+                if accessibleTask == nil {
+                    Button("Start the 10-second countdown") { startAccessibleCountdown() }
+                } else {
+                    Button("Stop the countdown") { stopHolding() }
+                }
+            }
         }
         .confirmationDialog("Use an emergency pass?", isPresented: $confirmingAccessibleUse, titleVisibility: .visible) {
-            Button("Use a pass") { if !countdown.isDone { complete() } }
+            Button("Use a pass") { if accessibleReady { complete() } }
+        }
+        .onChange(of: confirmingAccessibleUse) { _, showing in
+            // Closed without using it: the countdown starts over.
+            if !showing, dismissTask == nil, accessibleReady {
+                accessibleReady = false
+                withAnimation(reduceMotion ? Motion.reveal : Motion.ui) { countdown.progress = 0 }
+            }
+        }
+    }
+
+    private func startAccessibleCountdown() {
+        guard accessibleTask == nil, holdTask == nil, !accessibleReady, canUse, scenePhase == .active else { return }
+        accessibleTask = Task { @MainActor in
+            var last = ContinuousClock.now
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(100))
+                guard !Task.isCancelled else { return }
+                let now = ContinuousClock.now
+                let elapsed = last.duration(to: now)
+                last = now
+                let before = countdown.secondsLeft
+                countdown.advance(by: Double(elapsed.components.seconds)
+                    + Double(elapsed.components.attoseconds) / 1e18)
+                if countdown.isDone {
+                    // Held just short of done, so nothing reads "Apps open" before the owner confirms.
+                    countdown.progress = 0.999
+                    accessibleTask = nil
+                    accessibleReady = true
+                    confirmingAccessibleUse = true
+                    return
+                }
+                if countdown.secondsLeft != before {
+                    AccessibilityNotification.Announcement("\(countdown.secondsLeft)").post()
+                }
+            }
         }
     }
 
@@ -181,6 +228,9 @@ struct EmergencyPassView: View {
     private func stopHolding() {
         holdTask?.cancel()
         holdTask = nil
+        accessibleTask?.cancel()
+        accessibleTask = nil
+        accessibleReady = false
         guard !countdown.isDone else { return }
         withAnimation(reduceMotion ? Motion.reveal : Motion.ui) { countdown.progress = 0 }
     }
@@ -189,6 +239,8 @@ struct EmergencyPassView: View {
         guard passesAtOpen > 0, dismissTask == nil else { return }
         holdTask?.cancel()
         holdTask = nil
+        accessibleTask?.cancel()
+        accessibleTask = nil
         guard onUse() else {
             countdown.progress = 0
             dismiss()

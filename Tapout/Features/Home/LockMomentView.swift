@@ -9,6 +9,8 @@ struct LockMomentView: View {
     let session: LockSession
     /// What the lock is for, shown under "Locked".
     var intention: String? = nil
+    /// A timer lock counts down, so the overlay matches Home's countdown when it hands over.
+    var timer: TimerLock? = nil
     let onFinished: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -110,10 +112,14 @@ struct LockMomentView: View {
                 Group {
                     // Live, so the digits match Home's timer when the overlay hands over.
                     TimelineView(.periodic(from: .now, by: 0.5)) { context in
-                        TimerText(text: TimeFormat.clock(session.elapsed(at: context.date)))
+                        if let timer {
+                            TimerText(text: TimeFormat.clock(timer.remaining(at: context.date).rounded(.up)))
+                        } else {
+                            TimerText(text: TimeFormat.clock(session.elapsed(at: context.date)))
+                        }
                     }
                     .lockMomentMatch(.timer, inOverlay: true)
-                    StateLabel(text: "Locked", systemImage: "lock", color: .emberInk)
+                    StateLabel(text: timer == nil ? "Locked" : "Locked · timer", systemImage: "lock", color: .emberInk)
                         .lockMomentMatch(.stateWord, inOverlay: true)
                     if let intention {
                         Text(intention)

@@ -6,14 +6,17 @@ struct RejectedTag: Equatable {
     let hint: String?
     /// Only while unlocked, so a new sticker can never be paired to escape a lock.
     let canPair: Bool
+    /// Whether the tag was read during a lock, so "Try again" means unlock.
+    let locked: Bool
 
     static func unknown(tryPlaces: [String], locked: Bool) -> RejectedTag {
-        RejectedTag(title: "That's not one of your tags.", hint: hint(tryPlaces, locked: locked), canPair: !locked)
+        RejectedTag(title: "That's not one of your tags.", hint: hint(tryPlaces, locked: locked), canPair: !locked,
+                    locked: locked)
     }
 
     /// A paired tag that the active mode doesn't unlock at.
     static func wrongPlace(mode: String, tryPlaces: [String]) -> RejectedTag {
-        RejectedTag(title: "Not for \(mode).", hint: hint(tryPlaces, locked: true), canPair: false)
+        RejectedTag(title: "Not for \(mode).", hint: hint(tryPlaces, locked: true), canPair: false, locked: true)
     }
 
     /// "Try Kitchen or Desk." from the first two places. With none, point to Places, which only helps while unlocked.

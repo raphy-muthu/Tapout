@@ -23,13 +23,15 @@ struct LockSnapshot: Equatable, Sendable {
     /// down to it instead of up. A field, not a `State`, so every switch over the state keeps working.
     var timerEndsAt: Date?
 
-    static func make(store: SharedStore, now: Date, calendar: Calendar = .current) -> LockSnapshot {
-        let history = store.lockHistory
+    /// `history` is the store's lock history, read once by `timeline` for all its entries.
+    static func make(store: SharedStore, now: Date, calendar: Calendar = .current,
+                     history stored: [LockRecord]? = nil) -> LockSnapshot {
+        let session = store.session
+        let history = effectiveHistory(stored ?? store.lockHistory, store: store, session: session)
         let running = history.last { $0.end == nil }
         let place = running?.placeUID.flatMap { uid in store.pairedTags.first { $0.uid == uid }?.name }
         // A timer that has come due reads as the unlock it is about to be, even before the app or the
         // monitor has written it, and its record stops counting at the timer's end.
-        let session = store.session
         let timer = store.timerLock.flatMap { timer -> TimerLock? in
             if case .unlocked = session { return nil }
             return timer
@@ -69,6 +71,29 @@ struct LockSnapshot: Equatable, Sendable {
         )
     }
 
+    /// The history as the app will write it once it next runs. Only the app writes the history, so while Tapout
+    /// is closed the monitor's changes aren't in it yet: a timer the monitor ended still has an open record, an
+    /// unlock leaves one open, and a lock a schedule started has none. Without this the totals would keep counting.
+    static func effectiveHistory(_ stored: [LockRecord], store: SharedStore, session: LockSession) -> [LockRecord] {
+        var history = stored
+        if let index = history.lastIndex(where: { $0.end == nil }) {
+            let open = history[index]
+            if let finished = store.finishedTimer, !TimerLock.wasClosed(finished, store: store), open.start < finished.endsAt {
+                history[index].end = finished.endsAt
+                history[index].endPass(at: finished.endsAt)
+            } else if case .unlocked = session, let unlockedAt = store.lastUnlockAt, unlockedAt >= open.start {
+                history[index].end = unlockedAt
+                history[index].endPass(at: unlockedAt)
+            }
+        }
+        if case .locked(let since) = session, !history.contains(where: { $0.end == nil }) {
+            let lastEnd = history.compactMap(\.end).max()
+            let start = max(since, lastEnd ?? since)
+            history.append(LockRecord(start: start, end: nil, placeUID: nil, modeID: store.activeModeID ?? UUID()))
+        }
+        return history
+    }
+
     /// The state to draw at `date`: once a pass's relock time comes, it reads as the lock it resumes,
     /// so a face never shows a countdown past 0:00 while it waits for the next entry.
     func state(at date: Date) -> State {
@@ -87,7 +112,8 @@ struct LockSnapshot: Equatable, Sendable {
     /// `now` and midnight; locked, every 15 minutes for 4 hours; during a pass, `now`, then the lock
     /// from the relock time on. The app and the monitor also reload the timelines after a change.
     static func timeline(store: SharedStore, now: Date, calendar: Calendar = .current) -> SnapshotTimeline {
-        let first = make(store: store, now: now, calendar: calendar)
+        let history = store.lockHistory
+        let first = make(store: store, now: now, calendar: calendar, history: history)
         let midnight = calendar.dateInterval(of: .day, for: now)?.end ?? now + 86_400
         func lockedDates(from start: Date) -> [Date] {
             (0...Int(lockedWindow / lockedRedraw)).map { start + Double($0) * lockedRedraw }
@@ -106,7 +132,8 @@ struct LockSnapshot: Equatable, Sendable {
         dates = Array(Set(dates)).sorted()
         return SnapshotTimeline(
             entries: dates.map { date in
-                SnapshotTimeline.Entry(date: date, snapshot: date == now ? first : make(store: store, now: date, calendar: calendar))
+                SnapshotTimeline.Entry(date: date, snapshot: date == now ? first
+                                       : make(store: store, now: date, calendar: calendar, history: history))
             },
             reloadAfter: dates.last ?? midnight
         )

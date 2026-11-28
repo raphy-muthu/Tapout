@@ -245,3 +245,21 @@ Living glass switch on. Widgets and the Live Activity seen on the simulator only
 - [ ] **Largest text.** At your largest text size, the numbers on mode cards grow with the words, and the mode pill, suggestion chips, Scan, Timer, Save place, Share and Make default keep space around their labels. Home's "phone-free today" line is complete (the orb gets smaller). Timer length, onboarding's time ranges, Insights tiles and chart labels, and Settings grow too; the week chart stays on screen; "Emergency passes", "Afternoons" and "0 apps" don't break mid-word; onboarding's first, Screen Time and pairing steps and the rejected-tag screen show their words without scrolling. Switch off too: this change ships. (14)
 - [ ] **VoiceOver walk.** With VoiceOver on, switch on, swipe through Home, lock and unlock, every tab, a mode's drawer and editor, pairing and the onboarding preview: everything is announced in a sensible order and every control can be activated. (14)
 - [ ] **Reduce Motion walk.** The same tour with Reduce Motion on: nothing slides, grows or sweeps; the glow and orbs hold still. (14)
+
+## 20. Security and bug sweep (2026-11-27)
+
+Fixed after a full sweep. The clock checks matter most: they are what a determined owner would try, and the simulator can't prove them. Turn off Settings → General → Date & Time → Set Automatically for these, and turn it back on after.
+
+- [ ] **Clock forward during a timer.** Start a 15-minute timer, set the clock 2 hours ahead, return to Tapout: still locked, apps Sealed. Close Tapout: the apps open about 15 real minutes after the start, not before. Lab shows "Clock changed: timer end moved to …". (sweep)
+- [ ] **Clock back during a timer.** Start a 15-minute timer, set the clock to before it started, return to Tapout: still locked. It ends 15 real minutes after the start. (sweep)
+- [ ] **Clock back during a pass.** Use a pass, and at about 4 minutes set the clock back 3 minutes. Stay in Tapout: it relocks at 5 real minutes. Repeat with Tapout closed and the blocked apps in use: they relock within a minute or two of 5 real minutes. Note how late. (sweep)
+- [ ] **Time zone during a pass.** Use a pass, then change the time zone to Tokyo and to Honolulu (Set Automatically off). With Tapout closed, the apps relock about 5 minutes after the pass started. Note how late. (sweep)
+- [ ] **Restart, then clock.** Start a 30-minute timer, restart the iPhone, then set the clock forward an hour. Known limit: after a restart only the wall clock is left, so this one can end the timer early. Note what happens. (sweep)
+- [ ] **Schedule after a fast clock.** Set the clock a day ahead, unlock with your tag, then put Set Automatically back on. The next scheduled window still locks. (sweep)
+- [ ] **Changing-ID card.** Try to pair a bank, office or transit card: "This tag changes its ID each time. Use a sticker tag." and nothing is saved. (sweep)
+- [ ] **VoiceOver pass.** With VoiceOver on, open Emergency pass, swipe up or down to "Start the 10-second countdown" and double-tap: it counts 10 seconds aloud, then asks "Use an emergency pass?". Cancelling starts over. There is no faster way. (sweep)
+- [ ] **Timer into a schedule, Live Activity.** Start a timer that ends inside a scheduled window and close Tapout. At the timer's end the Live Activity keeps reading locked and counting up; it never says "Time's up" or "Open". (sweep)
+- [ ] **Pass inside a timer, Live Activity.** Start a 30-minute timer, use a pass 10 minutes in, close Tapout. After the relock the card shows "Ends <time>", not a countdown that stops at 0:00. (sweep)
+- [ ] **Widgets after a timer ends with Tapout closed.** Today's total and the week's bars stop growing at the timer's end. (sweep)
+- [ ] **Screen Time revoke.** Turn off Tapout's Screen Time access and switch straight back: the Screen Time page appears within about 2 seconds, every time. (sweep)
+- [ ] **App Store.** In App Store Connect, untick availability on Apple silicon Macs and Vision Pro. The NFC requirement already keeps iPads out. (sweep)

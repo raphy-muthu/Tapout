@@ -12,6 +12,14 @@ struct TagUID: Codable, Hashable, Sendable {
         self.hex = data.map { String(format: "%02X", $0) }.joined()
     }
 
+    /// Whether this ID stays the same every time the tag is read. An empty ID can't tell tags apart, and a 4-byte
+    /// ID starting 08 is an ISO 14443-3 random ID (many bank, office and transit cards): it changes each time,
+    /// so a place paired with it could never unlock again.
+    var isStable: Bool {
+        guard !hex.isEmpty else { return false }
+        return !(hex.count == 8 && hex.hasPrefix("08"))
+    }
+
     /// "04:A2:0F", for the Lab and the log.
     var display: String {
         var pairs: [Substring] = []

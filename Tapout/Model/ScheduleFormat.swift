@@ -55,8 +55,15 @@ enum ScheduleFormat {
 
 /// Converts between a schedule's minutes after midnight and the `Date` a `DatePicker` edits.
 enum ClockMinutes {
-    static func date(_ minutes: Int, on day: Date = .now, calendar: Calendar = .current) -> Date {
-        calendar.date(bySettingHour: minutes / 60, minute: minutes % 60, second: 0, of: day) ?? day
+    /// The pickers edit times on this fixed day, which has no daylight-saving change in any time zone, so a
+    /// time in a skipped hour (2:30 on a spring-forward day) is never moved when the editor opens on that day.
+    static func referenceDay(calendar: Calendar = .current) -> Date {
+        calendar.date(from: DateComponents(year: 2001, month: 1, day: 15, hour: 12)) ?? .now
+    }
+
+    static func date(_ minutes: Int, on day: Date? = nil, calendar: Calendar = .current) -> Date {
+        let day = day ?? referenceDay(calendar: calendar)
+        return calendar.date(bySettingHour: minutes / 60, minute: minutes % 60, second: 0, of: day) ?? day
     }
 
     static func minutes(of date: Date, calendar: Calendar = .current) -> Int {

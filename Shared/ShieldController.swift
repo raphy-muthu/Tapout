@@ -15,7 +15,10 @@ extension ManagedSettingsStore.Name {
 struct ShieldController: Shielding {
     private let store = ManagedSettingsStore(named: .tapout)
 
+    /// An empty plan changes nothing: shields only go on from the unlocked (cleared) state or stay as they are,
+    /// so a mode list that couldn't be read never takes the shields off a running lock.
     func apply(_ plan: ShieldPlan) {
+        guard !plan.isEmpty else { return }
         let categories = plan.categories
         store.shield.applications = plan.applications.isEmpty ? nil : plan.applications
         store.shield.applicationCategories = categories.isEmpty ? nil : .specific(categories, except: plan.allowedApplications)

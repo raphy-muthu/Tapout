@@ -41,10 +41,21 @@ struct LockScreenCard: View {
                         .minimumScaleFactor(0.8)
                     timer(until, countsDown: true)
                     Text(caption).font(.system(size: 15, weight: .semibold)).foregroundStyle(Color.emberInk)
-                } else if let end = state.timerEndsAt {
-                    HStack(alignment: .lastTextBaseline, spacing: Space.xs) {
-                        timer(end, countsDown: true, range: LockActivityTiming.countdown(to: end))
-                        Text("left").font(.system(size: 15, weight: .semibold)).foregroundStyle(Color.emberInk)
+                } else if let end = state.timerEnd(isStale: isStale) {
+                    if state.showsEndTime(isStale: isStale) {
+                        HStack(alignment: .lastTextBaseline, spacing: Space.xs) {
+                            Text("Ends").font(.system(size: 15, weight: .semibold)).foregroundStyle(Color.emberInk)
+                            Text(end, style: .time)
+                                .font(.system(size: 48, weight: .light).monospacedDigit())
+                                .foregroundStyle(Color.ink)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                        }
+                    } else {
+                        HStack(alignment: .lastTextBaseline, spacing: Space.xs) {
+                            timer(end, countsDown: true, range: LockActivityTiming.countdown(to: end))
+                            Text("left").font(.system(size: 15, weight: .semibold)).foregroundStyle(Color.emberInk)
+                        }
                     }
                     Label(caption, systemImage: "lock").font(.system(size: 15, weight: .semibold)).foregroundStyle(Color.emberInk)
                 } else {
@@ -62,7 +73,7 @@ struct LockScreenCard: View {
             if countsDown {
                 Text(timerInterval: range ?? date.addingTimeInterval(-LockActivityTiming.pass)...date, countsDown: true)
             } else {
-                Text(timerInterval: date...date.addingTimeInterval(LockActivityTiming.span), countsDown: false)
+                Text(timerInterval: LockActivityTiming.countUp(from: date), countsDown: false)
             }
         }
             .font(.system(size: 48, weight: .light).monospacedDigit())
@@ -101,10 +112,14 @@ struct IslandTimer: View {
                 Text("Open")
             } else if isOpen(state, isStale: isStale), let until = state.openUntil {
                 Text(timerInterval: until.addingTimeInterval(-LockActivityTiming.pass)...until, countsDown: true)
-            } else if let end = state.timerEndsAt {
-                Text(timerInterval: LockActivityTiming.countdown(to: end), countsDown: true)
+            } else if let end = state.timerEnd(isStale: isStale) {
+                if state.showsEndTime(isStale: isStale) {
+                    Text(end, style: .time)
+                } else {
+                    Text(timerInterval: LockActivityTiming.countdown(to: end), countsDown: true)
+                }
             } else {
-                Text(timerInterval: state.lockedFrom...state.lockedFrom.addingTimeInterval(LockActivityTiming.span), countsDown: false)
+                Text(timerInterval: LockActivityTiming.countUp(from: state.lockedFrom), countsDown: false)
             }
         }
         .font(.system(size: compact ? 16 : 40, weight: compact ? .semibold : .light).monospacedDigit())
@@ -135,7 +150,8 @@ struct IslandTitle: View {
     }
 
     private var subtitle: String {
-        if state.timerEndsAt != nil { return "Time left" }
+        if state.showsEndTime(isStale: isStale) { return "Ends at" }
+        if state.timerEnd(isStale: isStale) != nil { return "Time left" }
         return state.placeName.map { "Sealed at \($0)" } ?? "Sealed"
     }
 }
@@ -258,5 +274,12 @@ enum LockActivityTiming {
     /// end has passed, which `now...end` would not be.
     static func countdown(to end: Date) -> ClosedRange<Date> {
         end.addingTimeInterval(-TimerLock.maximum)...end
+    }
+
+    /// The range for counting a lock up from `start`. Its end is at least 12 hours after the content was made
+    /// (longer than an activity lives), so a lock older than a day, restarted after iOS's 8-hour limit,
+    /// never freezes at 24:00:00.
+    static func countUp(from start: Date, now: Date = .now) -> ClosedRange<Date> {
+        start...max(start.addingTimeInterval(span), now.addingTimeInterval(12 * 3600))
     }
 }

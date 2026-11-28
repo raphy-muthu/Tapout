@@ -23,6 +23,8 @@ struct InsightsView: View {
         var scheme: ColorScheme
         var interests: [Interest]
         var days: [Double]
+        /// Which day is today, so the image redraws at midnight even when no time changed.
+        var today: Int?
         var glass: Bool
     }
 
@@ -40,7 +42,8 @@ struct InsightsView: View {
         let weekStart = Insights.week(of: now, calendar: calendar).start
         let days = Insights.days(weekOf: now, history: history, now: now, calendar: calendar)
         let recapKey = RecapKey(weekStart: weekStart, totalText: TimeFormat.short(total), scheme: colorScheme,
-                                interests: Array(model.interests), days: days.map(\.lockedTime), glass: glass)
+                                interests: Array(model.interests), days: days.map(\.lockedTime),
+                                today: days.firstIndex(where: \.isToday), glass: glass)
         // A day picked last week isn't in `days` any more, so the screen falls back to the week.
         let picked = glass ? days.first { $0.start == chartDay } : nil
         let heroTime = picked?.lockedTime ?? total

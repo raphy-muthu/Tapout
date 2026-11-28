@@ -6,6 +6,8 @@
 final class TagReader: NSObject, NFCTagReaderSessionDelegate, @unchecked Sendable {
     enum ReadError: Error, Equatable {
         case unavailable, busy, unsupportedTag, cancelled, timedOut
+        /// The tag's ID changes every time it is read (`TagUID.isStable`), so it can't be a place.
+        case changingID
         case failed(String)
     }
 
@@ -70,9 +72,15 @@ final class TagReader: NSObject, NFCTagReaderSessionDelegate, @unchecked Sendabl
                 finish(.failure(.unsupportedTag))
                 return
             }
+            let read = TagUID(data: uid)
+            guard read.isStable else {
+                session.invalidate(errorMessage: "This tag changes its ID each time. Use a sticker tag.")
+                finish(.failure(.changingID))
+                return
+            }
             session.alertMessage = "Tag read."
             session.invalidate()
-            finish(.success(TagUID(data: uid)))
+            finish(.success(read))
         }
     }
 

@@ -30,7 +30,8 @@ struct LockActivityWidget: Widget {
                 DynamicIslandExpandedRegion(.bottom) {
                     if flat {
                         FlatIslandBlock(state: context.state, isStale: context.isStale)
-                    } else if !context.state.timerIsOver(isStale: context.isStale) {
+                    } else if !context.state.timerIsOver(isStale: context.isStale),
+                              !context.state.showsEndTime(isStale: context.isStale) {
                         // Nothing to unlock once a timer has ended.
                         Label("Tap a tag to unlock", systemImage: "wave.3.right")
                             .font(.system(size: 13, weight: .medium))

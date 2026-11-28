@@ -16,11 +16,14 @@ private struct FlatActivityNumber: View {
                 Text("Open")
             } else if !isStale, let until = state.openUntil {
                 Text(timerInterval: until.addingTimeInterval(-LockActivityTiming.pass)...until, countsDown: true)
-            } else if let end = state.timerEndsAt {
-                Text(timerInterval: LockActivityTiming.countdown(to: end), countsDown: true)
+            } else if let end = state.timerEnd(isStale: isStale) {
+                if state.showsEndTime(isStale: isStale) {
+                    Text(end, style: .time)
+                } else {
+                    Text(timerInterval: LockActivityTiming.countdown(to: end), countsDown: true)
+                }
             } else {
-                Text(timerInterval: state.lockedFrom...state.lockedFrom.addingTimeInterval(LockActivityTiming.span),
-                     countsDown: false)
+                Text(timerInterval: LockActivityTiming.countUp(from: state.lockedFrom), countsDown: false)
             }
         }
         .flatTimer(size)
@@ -58,8 +61,8 @@ struct FlatIslandBlock: View {
         VStack(alignment: .leading, spacing: 0) {
             FlatHeading(text: poster.heading)
             FlatActivityNumber(state: state, isStale: isStale, size: 52)
-            // Nothing to unlock once a timer has ended.
-            if !state.timerIsOver(isStale: isStale) {
+            // Nothing to unlock once a timer has ended, or may have (only its end time is shown).
+            if !state.timerIsOver(isStale: isStale), !state.showsEndTime(isStale: isStale) {
                 Label("Tap a tag to unlock", systemImage: "wave.3.right")
                     .font(.system(size: 13, weight: .semibold))
                     .lineLimit(1)

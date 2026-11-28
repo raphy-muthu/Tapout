@@ -181,7 +181,15 @@ struct ModeEditor: View {
     private var whenFootnote: String {
         if days.isEmpty { return "Pick days to lock on a schedule." }
         if schedule?.isRunnable == false { return "At least \(ModeSchedule.minimumDuration) minutes." }
-        return "Locks at the start, unlocks at the end."
+        if !fitsScheduleLimit { return "Up to \(ModeActivity.limit) modes can lock on a schedule." }
+        return "Locks at the start. Stays locked until you tap a tag."
+    }
+
+    /// A schedule past DeviceActivity's limit would be saved but never lock, so it can't be saved.
+    private var fitsScheduleLimit: Bool {
+        var mode = draft
+        mode.schedule = schedule
+        return ModeActivity.fits(mode, in: model.modes)
     }
 
     private var unlockCard: some View {
@@ -237,7 +245,7 @@ struct ModeEditor: View {
 
     private var canSave: Bool {
         let named = !draft.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        return !isLocked && named && (schedule?.isRunnable ?? true)
+        return !isLocked && named && (schedule?.isRunnable ?? true) && fitsScheduleLimit
     }
 
     private func save() {
